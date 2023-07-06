@@ -42,26 +42,22 @@ app.get('/events', async (req, res) => {
             'c.cat_name, register_status.title as status FROM events as e ' +
             'INNER JOIN category_events as c ON e.category_id = c.id ' +
             'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.event_status = 2 ')
-        console.log(fields2)
+
         return res.json({ soon, last });
     } catch (e) {
         console.log(e.message)
     }
+})
 
+app.get('/event/:id', async (req, res) => {
+    try {
+        const [rows, fields] = await connect.query('SELECT id, title, description, category_id, organization_id,participants_number, DATE_FORMAT(date_event,"%d-%m-%Y %H:%i") as date_event, picture_name, event_status, speakers, location, target_audience FROM events WHERE id = ?', [req.params.id])
+        // console.log(rows)
+        return res.json(rows)
 
-
-    // console.log(rows)
-
-    // const sql = 'SELECT e.id, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
-    //     'c.cat_name, register_status.title as status FROM events as e ' +
-    //     'INNER JOIN category_events as c ON e.category_id = c.id ' +
-    //     'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.event_status = 1 ORDER BY e.date_event'
-
-    // const soonData = connect.query(sql, (err, data) => {
-    //     if (err) return console.log(err.message)
-    //     console.log(data)
-    //     return res.json(data)
-    // })
+    } catch (e) {
+        console.log(e.message)
+    }
 })
 
 app.listen(8880, () => {
