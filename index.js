@@ -10,13 +10,7 @@ app.use(express.json())
 app.use(cors())
 app.use(express.static('public'))
 
-// const connect = await mysql.createConnection({
-//     host: 'localhost',
-//     user: 'root',
-//     password: 'root',
-//     database: 'govzalla_events',
-//     port: 8889
-// })
+
 
 const pool = await mysql.createPool({
     host: 'localhost',
@@ -52,7 +46,7 @@ app.get('/events', async (req, res) => {
 app.get('/event/:id', async (req, res) => {
     try {
         const [rows, fields] = await connect.query('SELECT id, title, description, category_id, organization_id,participants_number, DATE_FORMAT(date_event,"%d-%m-%Y %H:%i") as date_event, picture_name, event_status, speakers, location, target_audience FROM events WHERE id = ?', [req.params.id])
-        // console.log(rows)
+        console.log(rows)
         return res.json(rows)
 
     } catch (e) {
