@@ -27,7 +27,7 @@ const connect = pool.promise();
 app.get('/events', async (req, res) => {
 
     try {
-        const [soon, fields] = await connect.query('SELECT e.id, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
+        const [soon, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
             'c.cat_name, register_status.title as status FROM events as e ' +
             'INNER JOIN category_events as c ON e.category_id = c.id ' +
             'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.event_status = 1 ORDER BY e.date_event')
@@ -44,11 +44,32 @@ app.get('/events', async (req, res) => {
 })
 
 app.get('/event/:id', async (req, res) => {
-    try {
-        const [rows, fields] = await connect.query('SELECT id, title, description, category_id, organization_id,participants_number, DATE_FORMAT(date_event,"%d-%m-%Y %H:%i") as date_event, picture_name, event_status, speakers, location, target_audience FROM events WHERE id = ?', [req.params.id])
-        console.log(rows)
-        return res.json(rows)
 
+    try {
+        const [event, fields1] = await connect.query('SELECT e.id, e.title, e.description, e.category_id, ' +
+            'e.organization_id, e.participants_number, DATE_FORMAT(e.date_event,"%d-%m-%Y %H:%i") as date_event,' +
+            'e.picture_name, e.event_status, e.location,  e.target_audience ' +
+            'FROM events as e ' +
+            'WHERE e.id_uniq = ? ',
+            [req.params.id])
+
+        const [speakers, fields2] = await connect.query('SELECT sp.id, sp.firstname, sp.surname, sp.patronymic, sp.position, ' +
+            'sp.company, sp.avatar FROM speakers as sp INNER JOIN relationship_events_speakers as rel ON sp.id = rel.speakers_id ' +
+            'WHERE rel.event_id = ? ',
+            [req.params.id])
+        console.log(speakers)
+        return res.json({ event, speakers })
+
+    } catch (e) {
+        console.log(e.message)
+    }
+})
+
+app.get('/register/:id', async (req, res) => {
+    try {
+        const [reg_form, fields1] = await connect.query('SELECT count(id) FROM event WHERE id_uniq = ? AND event_status = 1',
+            [req.params.id])
+        return res.json(reg_form)
     } catch (e) {
         console.log(e.message)
     }
