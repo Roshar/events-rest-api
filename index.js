@@ -59,19 +59,23 @@ app.get('/event/:id', async (req, res) => {
             'sp.company, sp.avatar FROM speakers as sp INNER JOIN relationship_events_speakers as rel ON sp.id = rel.speakers_id ' +
             'WHERE rel.event_id = ? ',
             [req.params.id])
+
+        const [enrollers, fields3] = await connect.query('SELECT COUNT(id) as amount FROM enrollers WHERE event_id = ? ',
+            [req.params.id])
         console.log(speakers)
-        return res.json({ event, speakers })
+        return res.json({ event, speakers, enrollers })
 
     } catch (e) {
         console.log(e.message)
     }
 })
 
+
 app.get('/register/:id', async (req, res) => {
     try {
-        const [reg_form, fields1] = await connect.query('SELECT count(id) FROM event WHERE id_uniq = ? AND event_status = 1',
+        const [reg_form, fields1] = await connect.query('SELECT title FROM events WHERE id_uniq = ? AND event_status = 1',
             [req.params.id])
-        return res.status(200).json(reg_form)
+        return res.json(reg_form)
     } catch (e) {
         console.log(e.message)
     }
@@ -98,9 +102,7 @@ app.post('/register',
                     req.body.area_id, user_id_link
                 ])
 
-                console.log(row)
-
-                return res.json({ msg: "Вы зарегистрированы", user_id_link, status: 200 })
+                return res.json({ msg: "Вы успешно зарегистрированы на мероприятие!", user_id_link, status: 200 })
             } catch (e) {
                 console.log('ошибка')
                 console.log(e)
@@ -110,6 +112,7 @@ app.post('/register',
         res.send({ errors: result.array() });
 
     })
+
 
 app.listen(8880, () => {
     console.log('backend')
