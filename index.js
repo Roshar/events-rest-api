@@ -94,9 +94,18 @@ app.post('/register',
         const result = validationResult(req);
         if (result.isEmpty()) {
             const user_id_link = uuidv4()
+
+
             try {
+
+                const [email, filelds2] = await connect.query('SELECT email FROM enrollers WHERE event_id = ? AND email = ?', [req.body.event_id, req.body.email]);
+
+                if (email.length > 0) {
+                    return res.json({ msg: `Пользователь с таким электронным адресом (${email[0].email}) уже зарегистрирован на данное мероприятие !`, status: 200, errorIsRow: 1 })
+                }
+
                 const [row, filelds] = await connect.query('INSERT INTO enrollers ' +
-                    '(`event_id`,`surname`,`firstname`,`patronymic`,`email`,`phone`,`position`,`company`,`area_id`,`uniq_serial_for_link`) ' +
+                    '(`event_id`,`surname`,`firstname`,`patronymicw`,`email`,`phone`,`position`,`company`,`area_id`,`uniq_serial_for_link`) ' +
                     'VALUES (?,?,?,?,?,?,?,?,?,?)', [
                     req.body.event_id, req.body.surname, req.body.firstname, req.body.patronymic, req.body.email, req.body.phone, req.body.position, req.body.company,
                     req.body.area_id, user_id_link
@@ -104,10 +113,22 @@ app.post('/register',
 
                 return res.json({ msg: "Вы успешно зарегистрированы на мероприятие!", user_id_link, status: 200 })
             } catch (e) {
+
                 console.log('ошибка')
                 console.log(e)
+                return res.json({ msg: "Возникла ошибка при регистрации обратитесь в техподдержку", user_id_link, status: 500, errorIsRow: 1 })
             }
         }
+
+        [
+            {
+                type: 'field',
+                value: '',
+                msg: 'Invalid value',
+                path: 'company',
+                location: 'body'
+            }
+        ]
         console.log(result.array())
         res.send({ errors: result.array() });
 
