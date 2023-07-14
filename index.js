@@ -75,7 +75,9 @@ app.get('/register/:id', async (req, res) => {
     try {
         const [reg_form, fields1] = await connect.query('SELECT title FROM events WHERE id_uniq = ? AND event_status = 1',
             [req.params.id])
-        return res.json(reg_form)
+        const [list, fields] = await connect.query('SELECT * FROM area');
+
+        return res.json({ reg_form, list })
     } catch (e) {
         console.log(e.message)
     }
@@ -134,7 +136,32 @@ app.post('/register',
 
     })
 
+app.get('/admin', async (req, res) => {
+    try {
+        const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
+            'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, c.cat_name, register_status.title as status FROM events as e ' +
+            'INNER JOIN category_events as c ON e.category_id = c.id ' +
+            'INNER JOIN register_status ON register_status.id = e.event_status  ORDER BY e.date_event')
+        res.json(events)
+    } catch (e) {
+        console.log(e.message)
+    }
+})
+
+app.get('/admin/event/edit/:id', async (req, res) => {
+    try {
+        const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
+            'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, c.cat_name, register_status.title as status FROM events as e ' +
+            'INNER JOIN category_events as c ON e.category_id = c.id ' +
+            'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.id_uniq = ?  ORDER BY e.date_event', [req.body.id])
+        res.json(events)
+    } catch (e) {
+        console.log(e.message)
+    }
+})
+
 
 app.listen(8880, () => {
     console.log('backend')
 })
+
