@@ -150,11 +150,16 @@ app.get('/admin', async (req, res) => {
 
 app.get('/admin/event/edit/:id', async (req, res) => {
     try {
-        const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
+
+        const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.description, e.category_id, e.organization_id, DATE_FORMAT(e.date_event, "%Y-%m-%d")as date_event,  DATE_FORMAT(e.date_event, "%h:%i") as  time_event, e.location, e.picture_name, e.target_audience,e.participants_number, e.event_status,' +
             'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, c.cat_name, register_status.title as status FROM events as e ' +
             'INNER JOIN category_events as c ON e.category_id = c.id ' +
-            'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.id_uniq = ?  ORDER BY e.date_event', [req.body.id])
-        res.json(events)
+            'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.id_uniq = ? ', [req.params.id])
+        const [list, fields2] = await connect.query('SELECT * FROM category_events');
+        const [listOrg, fields3] = await connect.query('SELECT * FROM organizations');
+        const [speakersList, fields4] = await connect.query('SELECT * FROM speakers');
+        const [speakersForEvent, fields5] = await connect.query('SELECT res.id, res.speakers_id, res.event_id, s.firstname, s.surname FROM relationship_events_speakers as res INNER JOIN speakers as s ON res.speakers_id = s.id WHERE res.event_id = ?', [req.params.id]);
+        res.json({ events, list, listOrg, speakersList, speakersForEvent })
     } catch (e) {
         console.log(e.message)
     }
