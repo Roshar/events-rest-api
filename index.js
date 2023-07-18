@@ -93,13 +93,13 @@ app.post('/register',
     body('company').notEmpty(),
 
     async (req, res) => {
+
         const result = validationResult(req);
+
         if (result.isEmpty()) {
             const user_id_link = uuidv4()
 
-
             try {
-
                 const [email, filelds2] = await connect.query('SELECT email FROM enrollers WHERE event_id = ? AND email = ?', [req.body.event_id, req.body.email]);
 
                 if (email.length > 0) {
@@ -115,7 +115,6 @@ app.post('/register',
 
                 return res.json({ msg: "Вы успешно зарегистрированы на мероприятие!", user_id_link, status: 200 })
             } catch (e) {
-
                 console.log('ошибка')
                 console.log(e)
                 return res.json({ msg: "Возникла ошибка при регистрации обратитесь в техподдержку", user_id_link, status: 500, errorIsRow: 1 })
@@ -162,6 +161,58 @@ app.get('/admin/event/edit/:id', async (req, res) => {
         res.json({ events, list, listOrg, speakersList, speakersForEvent })
     } catch (e) {
         console.log(e.message)
+    }
+})
+
+// Update event by id
+
+app.post('/admin/event/edit/:id', async (req, res) => {
+
+    const data = req.body;
+    const title = req.body.title;
+    const description = req.body.description;
+    const category_id = req.body['category_id'];
+    const organization_id = req.body['organization_id'];
+    const location = req.body['location'];
+    const target_audience = req.body['target_audience'];
+    const participants_number = req.body['participants_number'];
+    const event_status = req.body['event_status'];
+    const id = req.body['id'];
+    const date_event = req.body['date_event'];
+    const date_time = req.body['date_time'];
+
+    const eventDt = date_event + ' ' + date_time;
+
+    try {
+        const [checkRow, fields] = await connect.query('SELECT id FROM events WHERE id_uniq = ?', [data.id]);
+        const notif = {}
+        if (checkRow.length > 0) {
+            const [udateData, fields2] =
+                await connect.query('UPDATE events SET `title` = ? , `description` = ?, `category_id` = ?,`organization_id` =?, ' +
+                    '`date_event` = ?, `location` = ?,`target_audience` = ?, `participants_number` = ?, `event_status` = ? WHERE id_uniq = ?',
+                    [title, description, category_id, organization_id, eventDt, location, target_audience, participants_number, event_status, id]);
+
+            if (udateData.affectedRows > 0) {
+                notif.msg = 'Данные успешно изменены!'
+                notif.status = 'success'
+                return res.json(notif)
+            } else {
+                notif.msg = 'При обновлении возникла ошибка, обратитесь к администратору'
+                notif.status = 'danger'
+                return res.json(notif)
+            }
+
+        } else {
+            notif.msg = 'Такой материал не найден! Обратитесь к администратору'
+            notif.status = 'danger'
+            return res.json(notif)
+        }
+
+    } catch (e) {
+        notif.msg = 'Ошибка операции'
+        notif.msg = 'danger'
+        console.log(e.message)
+        return res.json(notif)
     }
 })
 
