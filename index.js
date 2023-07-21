@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer'
 import * as bodyParser from "body-parser"
 import path from 'path'
+import { log } from 'console';
 
 
 const app = express();
@@ -15,16 +16,20 @@ app.use(express.json())
 app.use(cors())
 app.use(express.static('public'))
 
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'public/img/events_images')
+        cb(null, 'public/img/event_images')
     },
     filename: (req, file, cb) => {
-        cb(null, file.originalname)
+        console.log(file)
+        cb(null, file.fieldname + '-' + Date.now() + '.jpg')
     },
 })
 
 const upload = multer({ storage: storage })
+
+
 
 
 
@@ -182,6 +187,9 @@ app.get('/admin/event/edit/:id', async (req, res) => {
 
 app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
 
+    // console.log(req.body)
+    // console.log(req.file)
+    // return
     const data = req.body;
     const title = req.body.title;
     const description = req.body.description;
@@ -194,46 +202,45 @@ app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
     const id = req.body['id'];
     const date_event = req.body['date_event'];
     const date_time = req.body['date_time'];
+    let file = ''
 
-    const file = req.file;
+    if (req.file) {
+        file = req.file.filename;
+    }
 
-    console.log(file)
-    console.log(req.body)
-    return
+    const eventDt = date_event + ' ' + date_time;
+    const notif = {}
+    try {
+        const [checkRow, fields] = await connect.query('SELECT id FROM events WHERE id_uniq = ?', [data.id]);
 
-    // const eventDt = date_event + ' ' + date_time;
+        if (checkRow.length > 0) {
+            const [udateData, fields2] =
+                await connect.query('UPDATE events SET `title` = ? , `description` = ?, `category_id` = ?,`organization_id` =?, ' +
+                    '`date_event` = ?, `location` = ?,`target_audience = ?, `participants_number` = ?, `picture_name` = ?, `event_status` = ? WHERE id_uniq = ?',
+                    [title, description, category_id, organization_id, eventDt, location, target_audience, participants_number, file, event_status, id]);
 
-    // try {
-    //     const [checkRow, fields] = await connect.query('SELECT id FROM events WHERE id_uniq = ?', [data.id]);
-    //     const notif = {}
-    //     if (checkRow.length > 0) {
-    //         const [udateData, fields2] =
-    //             await connect.query('UPDATE events SET `title` = ? , `description` = ?, `category_id` = ?,`organization_id` =?, ' +
-    //                 '`date_event` = ?, `location` = ?,`target_audience` = ?, `participants_number` = ?, `event_status` = ? WHERE id_uniq = ?',
-    //                 [title, description, category_id, organization_id, eventDt, location, target_audience, participants_number, event_status, id]);
+            if (udateData.affectedRows > 0) {
+                notif.msg = 'Данные успешно изменены!'
+                notif.status = 'success'
+                return res.json(notif)
+            } else {
+                notif.msg = 'При обновлении возникла ошибка, обратитесь к администратору'
+                notif.status = 'danger'
+                return res.json(notif)
+            }
 
-    //         if (udateData.affectedRows > 0) {
-    //             notif.msg = 'Данные успешно изменены!'
-    //             notif.status = 'success'
-    //             return res.json(notif)
-    //         } else {
-    //             notif.msg = 'При обновлении возникла ошибка, обратитесь к администратору'
-    //             notif.status = 'danger'
-    //             return res.json(notif)
-    //         }
+        } else {
+            notif.msg = 'Такой материал не найден! Обратитесь к администратору'
+            notif.status = 'danger'
+            return res.json(notif)
+        }
 
-    //     } else {
-    //         notif.msg = 'Такой материал не найден! Обратитесь к администратору'
-    //         notif.status = 'danger'
-    //         return res.json(notif)
-    //     }
-
-    // } catch (e) {
-    //     notif.msg = 'Ошибка операции'
-    //     notif.msg = 'danger'
-    //     console.log(e.message)
-    //     return res.json(notif)
-    // }
+    } catch (e) {
+        notif.msg = 'Ошибка операции'
+        notif.status = 'danger'
+        console.log(e)
+        return res.json(notif)
+    }
 })
 
 
