@@ -157,7 +157,7 @@ app.post('/register',
 app.get('/admin', async (req, res) => {
     try {
         const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
-            'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, c.cat_name, register_status.title as status FROM events as e ' +
+            'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e ' +
             'INNER JOIN category_events as c ON e.category_id = c.id ' +
             'INNER JOIN register_status ON register_status.id = e.event_status  ORDER BY e.date_event')
         res.json(events)
@@ -170,7 +170,7 @@ app.get('/admin/event/edit/:id', async (req, res) => {
     try {
 
         const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.description, e.category_id, e.organization_id, DATE_FORMAT(e.date_event, "%Y-%m-%d")as date_event,  DATE_FORMAT(e.date_event, "%h:%i") as  time_event, e.location, e.picture_name, e.target_audience,e.participants_number, e.event_status,' +
-            'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, c.cat_name, register_status.title as status FROM events as e ' +
+            'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e ' +
             'INNER JOIN category_events as c ON e.category_id = c.id ' +
             'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.id_uniq = ? ', [req.params.id])
         const [list, fields2] = await connect.query('SELECT * FROM category_events');
@@ -187,7 +187,7 @@ app.get('/admin/event/edit/:id', async (req, res) => {
 
 app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
 
-    // console.log(req.body)
+    console.log(req.body)
     // console.log(req.file)
     // return
     const data = req.body;
@@ -202,7 +202,8 @@ app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
     const id = req.body['id'];
     const date_event = req.body['date_event'];
     const date_time = req.body['date_time'];
-    let file = ''
+    const published = req.body['published'];
+    let file = 'event_bg.jpg'
 
     if (req.file) {
         file = req.file.filename;
@@ -216,8 +217,8 @@ app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
         if (checkRow.length > 0) {
             const [udateData, fields2] =
                 await connect.query('UPDATE events SET `title` = ? , `description` = ?, `category_id` = ?,`organization_id` =?, ' +
-                    '`date_event` = ?, `location` = ?,`target_audience = ?, `participants_number` = ?, `picture_name` = ?, `event_status` = ? WHERE id_uniq = ?',
-                    [title, description, category_id, organization_id, eventDt, location, target_audience, participants_number, file, event_status, id]);
+                    '`date_event` = ?, `location` = ?,`target_audience` = ?, `participants_number` = ?, `picture_name` = ?, `event_status` = ?, `published` = ?  WHERE id_uniq = ?',
+                    [title, description, category_id, organization_id, eventDt, location, target_audience, participants_number, file, event_status, published, id]);
 
             if (udateData.affectedRows > 0) {
                 notif.msg = 'Данные успешно изменены!'
@@ -241,6 +242,10 @@ app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
         console.log(e)
         return res.json(notif)
     }
+})
+
+app.get('/admin/event/add', async (req, res) => {
+
 })
 
 
