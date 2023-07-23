@@ -187,9 +187,7 @@ app.get('/admin/event/edit/:id', async (req, res) => {
 
 app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
 
-    console.log(req.body)
-    // console.log(req.file)
-    // return
+
     const data = req.body;
     const title = req.body.title;
     const description = req.body.description;
@@ -245,6 +243,29 @@ app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
 })
 
 app.get('/admin/event/add', async (req, res) => {
+
+    try {
+        const [speakers, fields] = await connect.query('SELECT * FROM speakers');
+        const [cat, fields2] = await connect.query('SELECT * FROM category_events');
+        const [organizations, fields3] = await connect.query('SELECT * FROM organizations');
+        return res.json({ speakers, cat, organizations })
+    } catch (e) {
+        return res.json(e.message)
+    }
+
+})
+
+app.post('/admin/event/add', upload.single('file'), async (req, res) => {
+
+
+    let body = JSON.parse(req.body.event);
+    console.log(body)
+    try {
+
+
+    } catch (e) {
+        return res.json(e.message)
+    }
 
 })
 
