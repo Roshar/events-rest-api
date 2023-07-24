@@ -8,6 +8,7 @@ import multer from 'multer'
 import * as bodyParser from "body-parser"
 import path from 'path'
 import { log } from 'console';
+import moment from 'moment';
 
 
 const app = express();
@@ -257,14 +258,78 @@ app.get('/admin/event/add', async (req, res) => {
 
 app.post('/admin/event/add', upload.single('file'), async (req, res) => {
 
-
     let body = JSON.parse(req.body.event);
-    console.log(body)
+
+    const title = body['title']
+    const description = body['description']
+    const category_id = body['category_id']
+    const organization_id = body['organization_id']
+    const date_event = body['date_event']
+    const time_event = body['time_event']
+    const location = body['location']
+    const target_audience = body['target_audience']
+    const participants_number = body['participants_number']
+    const event_status = body['event_status'] ? body['event_status'] : 1
+    const published = body['published'] ? body['published'] : 1
+
+
+    const eventDt = date_event + ' ' + time_event;
+    const event_uniq = uuidv4()
+
+    let file = 'event_bg.jpg'
+
+    if (req.file) {
+        file = req.file.filename;
+    }
+
+
+
+    const notif = {}
     try {
+        console.log('innnd')
+        const [row, filelds] = await connect.query('INSERT INTO events ' +
+            '(`id_uniq`,`title`,`description`,`category_id`,`organization_id`,`date_event`,`location`,`target_audience`,`participants_number`,`picture_name`,`event_status`,`author`,`published`) ' +
+            'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+            event_uniq,
+            title,
+            description,
+            category_id,
+            organization_id,
+            eventDt,
+            location,
+            target_audience,
+            participants_number,
+            file,
+            event_status,
+            'addfdf',
+            published
+        ])
+
+        console.log(row)
+
+
+        notif.msg = 'Мероприятие успешно добавлено!!'
+        notif.status = 'success'
+
+        return res.json(notif)
+        if (udateData.affectedRows > 0) {
+            notif.msg = 'Данные успешно изменены!'
+            notif.status = 'success'
+            return res.json(notif)
+        } else {
+            notif.msg = 'При обновлении возникла ошибка, обратитесь к администратору'
+            notif.status = 'danger'
+            return res.json(notif)
+        }
+
+        return res.json({ msg: "Вы успешно зарегистрированы на мероприятие!", user_id_link, status: 200 })
 
 
     } catch (e) {
-        return res.json(e.message)
+        notif.msg = 'Ошибка при добавлении материала, обратитесь к администратору'
+        notif.status = 'danger'
+
+        return res.json(notif)
     }
 
 })
