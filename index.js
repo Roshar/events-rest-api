@@ -190,6 +190,9 @@ app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
 
 
     const data = req.body;
+
+    // console.log(data)
+
     const title = req.body.title;
     const description = req.body.description;
     const category_id = req.body['category_id'];
@@ -202,6 +205,11 @@ app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
     const date_event = req.body['date_event'];
     const date_time = req.body['date_time'];
     const published = req.body['published'];
+    const speakers = JSON.parse(req.body['speakersCurrent']);
+
+    console.log(speakers)
+
+
     let file = 'event_bg.jpg'
 
     if (req.file) {
@@ -211,6 +219,7 @@ app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
     const eventDt = date_event + ' ' + date_time;
     const notif = {}
     try {
+        const countOperation = []
         const [checkRow, fields] = await connect.query('SELECT id FROM events WHERE id_uniq = ?', [data.id]);
 
         if (checkRow.length > 0) {
@@ -219,9 +228,27 @@ app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
                     '`date_event` = ?, `location` = ?,`target_audience` = ?, `participants_number` = ?, `picture_name` = ?, `event_status` = ?, `published` = ?  WHERE id_uniq = ?',
                     [title, description, category_id, organization_id, eventDt, location, target_audience, participants_number, file, event_status, published, id]);
 
+
             if (udateData.affectedRows > 0) {
-                notif.msg = 'Данные успешно изменены!'
-                notif.status = 'success'
+                const [speakersDel, fields4] = await connect.query('DELETE FROM relationship_events_speakers WHERE `event_id` = ?', [
+                    id
+                ])
+                for (let i = 0; i < speakers.length; i++) {
+                    const [speakerRow, fields] = await connect.query('INSERT INTO relationship_events_speakers (`event_id`,`speakers_id`) VALUES (?,?)', [
+                        id,
+                        speakers[i]['speakers_id']
+                    ])
+                    countOperation.push(speakerRow.affectedRows)
+                }
+
+                if (countOperation.length > 0) {
+                    notif.msg = 'Данные успешно изменены!'
+                    notif.status = 'success'
+                } else {
+                    notif.msg = 'Данные изменены лишь частично, обратитесь к администратору'
+                    notif.status = 'danger'
+                }
+
                 return res.json(notif)
             } else {
                 notif.msg = 'При обновлении возникла ошибка, обратитесь к администратору'
@@ -276,20 +303,22 @@ app.post('/admin/event/add', upload.single('file'), async (req, res) => {
     const eventDt = date_event + ' ' + time_event;
     const event_uniq = uuidv4()
 
+    const speakers = body['speakers']
+
+
+    console.log(body)
+
     let file = 'event_bg.jpg'
 
     if (req.file) {
         file = req.file.filename;
     }
 
-
-
     const notif = {}
     try {
-        console.log('innnd')
         const [row, filelds] = await connect.query('INSERT INTO events ' +
             '(`id_uniq`,`title`,`description`,`category_id`,`organization_id`,`date_event`,`location`,`target_audience`,`participants_number`,`picture_name`,`event_status`,`author`,`published`) ' +
-            'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+            'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [
             event_uniq,
             title,
             description,
@@ -301,37 +330,64 @@ app.post('/admin/event/add', upload.single('file'), async (req, res) => {
             participants_number,
             file,
             event_status,
-            'addfdf',
+            'admin',
             published
         ])
 
-        console.log(row)
-
-
-        notif.msg = 'Мероприятие успешно добавлено!!'
-        notif.status = 'success'
-
-        return res.json(notif)
-        if (udateData.affectedRows > 0) {
-            notif.msg = 'Данные успешно изменены!'
+        if (row.insertId > 0) {
+            notif.msg = 'Мероприятие успешно добавлено!!'
             notif.status = 'success'
-            return res.json(notif)
+            const countOperation = []
+            for (let i = 0; i < speakers.length; i++) {
+                const [speakerRow, fields] = await connect.query('INSERT INTO relationship_events_speakers (`event_id`,`speakers_id`) VALUES (?,?)', [
+                    event_uniq,
+                    speakers[i]['id']
+                ])
+                countOperation.push(speakerRow.affectedRows)
+            }
+            // console.log(countOperation)
+            if (countOperation.length > 0)
+                return res.json(notif)
+            return false
         } else {
             notif.msg = 'При обновлении возникла ошибка, обратитесь к администратору'
             notif.status = 'danger'
             return res.json(notif)
         }
 
-        return res.json({ msg: "Вы успешно зарегистрированы на мероприятие!", user_id_link, status: 200 })
-
-
     } catch (e) {
         notif.msg = 'Ошибка при добавлении материала, обратитесь к администратору'
         notif.status = 'danger'
-
+        console.log(e.message)
         return res.json(notif)
     }
 
+})
+
+// Admin user
+
+app.get('/login', async (req, res) => {
+    try {
+        const [checkRow, fields] = await connect.query('SELECT * FROM users')
+        return res.json(checkRow)
+    } catch (e) {
+        console.log(e.message)
+    }
+})
+
+app.post('/login', upload.single('file'), async (req, res) => {
+    const login = req.body?.login
+    const password = req.body?.password
+    console.log(login)
+    console.log(password)
+    try {
+        const [checkUser, fileds] = await connect.query('SELECT id FROM users WHERE `login` = ? AND `password` = ?', [
+            login, password
+        ])
+        console.log(checkUser)
+    } catch (e) {
+        console.log(e.message)
+    }
 })
 
 
