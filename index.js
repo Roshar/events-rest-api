@@ -9,6 +9,13 @@ import * as bodyParser from "body-parser"
 import path from 'path'
 import { log } from 'console';
 import moment from 'moment';
+import jwt from "jsonwebtoken"
+import 'dotenv/config'
+import ensureToken from './utils/ensureToken.js'
+
+
+
+
 
 
 const app = express();
@@ -155,224 +162,325 @@ app.post('/register',
 
     })
 
-app.get('/admin', async (req, res) => {
-    try {
-        const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
-            'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e ' +
-            'INNER JOIN category_events as c ON e.category_id = c.id ' +
-            'INNER JOIN register_status ON register_status.id = e.event_status  ORDER BY e.date_event')
-        res.json(events)
-    } catch (e) {
-        console.log(e.message)
-    }
+
+app.get('/speakers', ensureToken, async (req, res) => {
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+                const [speakerList, fields] = await connect.query('SELECT * FROM speakers');
+                res.json(speakerList)
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
+
 })
 
-app.get('/admin/event/edit/:id', async (req, res) => {
-    try {
+app.get('/speaker/:id', ensureToken, async (req, res) => {
+    const id = req.params.id;
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+                const [speakerList, fields] = await connect.query('SELECT * FROM speakers WHERE id = ?', [
+                    id
+                ]);
+                res.json(speakerList)
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
 
-        const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.description, e.category_id, e.organization_id, DATE_FORMAT(e.date_event, "%Y-%m-%d")as date_event,  DATE_FORMAT(e.date_event, "%h:%i") as  time_event, e.location, e.picture_name, e.target_audience,e.participants_number, e.event_status,' +
-            'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e ' +
-            'INNER JOIN category_events as c ON e.category_id = c.id ' +
-            'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.id_uniq = ? ', [req.params.id])
-        const [list, fields2] = await connect.query('SELECT * FROM category_events');
-        const [listOrg, fields3] = await connect.query('SELECT * FROM organizations');
-        const [speakersList, fields4] = await connect.query('SELECT * FROM speakers');
-        const [speakersForEvent, fields5] = await connect.query('SELECT res.id, res.speakers_id, res.event_id, s.firstname, s.surname FROM relationship_events_speakers as res INNER JOIN speakers as s ON res.speakers_id = s.id WHERE res.event_id = ?', [req.params.id]);
-        res.json({ events, list, listOrg, speakersList, speakersForEvent })
-    } catch (e) {
-        console.log(e.message)
-    }
+})
+
+
+
+app.get('/admin', ensureToken, async (req, res) => {
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+                const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
+                    'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e ' +
+                    'INNER JOIN category_events as c ON e.category_id = c.id ' +
+                    'INNER JOIN register_status ON register_status.id = e.event_status  ORDER BY e.date_event')
+                res.json(events)
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
+
+})
+
+app.get('/admin/event/edit/:id', ensureToken, async (req, res) => {
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+
+                const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.description, e.category_id, e.organization_id, DATE_FORMAT(e.date_event, "%Y-%m-%d")as date_event,  DATE_FORMAT(e.date_event, "%h:%i") as  time_event, e.location, e.picture_name, e.target_audience,e.participants_number, e.event_status,' +
+                    'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e ' +
+                    'INNER JOIN category_events as c ON e.category_id = c.id ' +
+                    'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.id_uniq = ? ', [req.params.id])
+                const [list, fields2] = await connect.query('SELECT * FROM category_events');
+                const [listOrg, fields3] = await connect.query('SELECT * FROM organizations');
+                const [speakersList, fields4] = await connect.query('SELECT * FROM speakers');
+                const [speakersForEvent, fields5] = await connect.query('SELECT res.id, res.speakers_id, res.event_id, s.firstname, s.surname FROM relationship_events_speakers as res INNER JOIN speakers as s ON res.speakers_id = s.id WHERE res.event_id = ?', [req.params.id]);
+                res.json({ events, list, listOrg, speakersList, speakersForEvent })
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
+
 })
 
 // Update event by id
 
-app.post('/admin/event/edit/:id', upload.single('file'), async (req, res) => {
+app.post('/admin/event/edit/:id', ensureToken, upload.single('file'), async (req, res) => {
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            const data = req.body;
+            const title = req.body.title;
+            const description = req.body.description;
+            const category_id = req.body['category_id'];
+            const organization_id = req.body['organization_id'];
+            const location = req.body['location'];
+            const target_audience = req.body['target_audience'];
+            const participants_number = req.body['participants_number'];
+            const event_status = req.body['event_status'];
+            const id = req.body['id'];
+            const date_event = req.body['date_event'];
+            const date_time = req.body['date_time'];
+            const published = req.body['published'];
+            const speakers = JSON.parse(req.body['speakersCurrent']);
+
+            let file = 'event_bg.jpg'
+
+            if (req.file) {
+                file = req.file.filename;
+            }
+
+            const eventDt = date_event + ' ' + date_time;
+            const notif = {}
+            try {
+                const countOperation = []
+                const [checkRow, fields] = await connect.query('SELECT id FROM events WHERE id_uniq = ?', [data.id]);
+
+                if (checkRow.length > 0) {
+                    const [udateData, fields2] =
+                        await connect.query('UPDATE events SET `title` = ? , `description` = ?, `category_id` = ?,`organization_id` =?, ' +
+                            '`date_event` = ?, `location` = ?,`target_audience` = ?, `participants_number` = ?, `picture_name` = ?, `event_status` = ?, `published` = ?  WHERE id_uniq = ?',
+                            [title, description, category_id, organization_id, eventDt, location, target_audience, participants_number, file, event_status, published, id]);
 
 
-    const data = req.body;
+                    if (udateData.affectedRows > 0) {
+                        const [speakersDel, fields4] = await connect.query('DELETE FROM relationship_events_speakers WHERE `event_id` = ?', [
+                            id
+                        ])
+                        for (let i = 0; i < speakers.length; i++) {
+                            const [speakerRow, fields] = await connect.query('INSERT INTO relationship_events_speakers (`event_id`,`speakers_id`) VALUES (?,?)', [
+                                id,
+                                speakers[i]['speakers_id']
+                            ])
+                            countOperation.push(speakerRow.affectedRows)
+                        }
 
-    // console.log(data)
+                        if (countOperation.length > 0) {
+                            notif.msg = 'Данные успешно изменены!'
+                            notif.status = 'success'
+                        } else {
+                            notif.msg = 'Данные изменены лишь частично, обратитесь к администратору'
+                            notif.status = 'danger'
+                        }
 
-    const title = req.body.title;
-    const description = req.body.description;
-    const category_id = req.body['category_id'];
-    const organization_id = req.body['organization_id'];
-    const location = req.body['location'];
-    const target_audience = req.body['target_audience'];
-    const participants_number = req.body['participants_number'];
-    const event_status = req.body['event_status'];
-    const id = req.body['id'];
-    const date_event = req.body['date_event'];
-    const date_time = req.body['date_time'];
-    const published = req.body['published'];
-    const speakers = JSON.parse(req.body['speakersCurrent']);
+                        return res.json(notif)
+                    } else {
+                        notif.msg = 'При обновлении возникла ошибка, обратитесь к администратору'
+                        notif.status = 'danger'
+                        return res.json(notif)
+                    }
 
-    console.log(speakers)
-
-
-    let file = 'event_bg.jpg'
-
-    if (req.file) {
-        file = req.file.filename;
-    }
-
-    const eventDt = date_event + ' ' + date_time;
-    const notif = {}
-    try {
-        const countOperation = []
-        const [checkRow, fields] = await connect.query('SELECT id FROM events WHERE id_uniq = ?', [data.id]);
-
-        if (checkRow.length > 0) {
-            const [udateData, fields2] =
-                await connect.query('UPDATE events SET `title` = ? , `description` = ?, `category_id` = ?,`organization_id` =?, ' +
-                    '`date_event` = ?, `location` = ?,`target_audience` = ?, `participants_number` = ?, `picture_name` = ?, `event_status` = ?, `published` = ?  WHERE id_uniq = ?',
-                    [title, description, category_id, organization_id, eventDt, location, target_audience, participants_number, file, event_status, published, id]);
-
-
-            if (udateData.affectedRows > 0) {
-                const [speakersDel, fields4] = await connect.query('DELETE FROM relationship_events_speakers WHERE `event_id` = ?', [
-                    id
-                ])
-                for (let i = 0; i < speakers.length; i++) {
-                    const [speakerRow, fields] = await connect.query('INSERT INTO relationship_events_speakers (`event_id`,`speakers_id`) VALUES (?,?)', [
-                        id,
-                        speakers[i]['speakers_id']
-                    ])
-                    countOperation.push(speakerRow.affectedRows)
-                }
-
-                if (countOperation.length > 0) {
-                    notif.msg = 'Данные успешно изменены!'
-                    notif.status = 'success'
                 } else {
-                    notif.msg = 'Данные изменены лишь частично, обратитесь к администратору'
+                    notif.msg = 'Такой материал не найден! Обратитесь к администратору'
                     notif.status = 'danger'
+                    return res.json(notif)
                 }
 
-                return res.json(notif)
-            } else {
-                notif.msg = 'При обновлении возникла ошибка, обратитесь к администратору'
+            } catch (e) {
+                notif.msg = 'Ошибка операции'
                 notif.status = 'danger'
+                console.log(e)
                 return res.json(notif)
             }
-
-        } else {
-            notif.msg = 'Такой материал не найден! Обратитесь к администратору'
-            notif.status = 'danger'
-            return res.json(notif)
         }
+    })
 
-    } catch (e) {
-        notif.msg = 'Ошибка операции'
-        notif.status = 'danger'
-        console.log(e)
-        return res.json(notif)
-    }
-})
-
-app.get('/admin/event/add', async (req, res) => {
-
-    try {
-        const [speakers, fields] = await connect.query('SELECT * FROM speakers');
-        const [cat, fields2] = await connect.query('SELECT * FROM category_events');
-        const [organizations, fields3] = await connect.query('SELECT * FROM organizations');
-        return res.json({ speakers, cat, organizations })
-    } catch (e) {
-        return res.json(e.message)
-    }
 
 })
 
-app.post('/admin/event/add', upload.single('file'), async (req, res) => {
-
-    let body = JSON.parse(req.body.event);
-
-    const title = body['title']
-    const description = body['description']
-    const category_id = body['category_id']
-    const organization_id = body['organization_id']
-    const date_event = body['date_event']
-    const time_event = body['time_event']
-    const location = body['location']
-    const target_audience = body['target_audience']
-    const participants_number = body['participants_number']
-    const event_status = body['event_status'] ? body['event_status'] : 1
-    const published = body['published'] ? body['published'] : 1
 
 
-    const eventDt = date_event + ' ' + time_event;
-    const event_uniq = uuidv4()
+app.get('/admin/event/add', ensureToken, async (req, res) => {
 
-    const speakers = body['speakers']
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+                const [speakers, fields] = await connect.query('SELECT * FROM speakers');
+                const [cat, fields2] = await connect.query('SELECT * FROM category_events');
+                const [organizations, fields3] = await connect.query('SELECT * FROM organizations');
+                return res.json({ speakers, cat, organizations })
+            } catch (e) {
+                return res.json(e.message)
+            }
+        }
+    })
 
 
-    console.log(body)
 
-    let file = 'event_bg.jpg'
+})
 
-    if (req.file) {
-        file = req.file.filename;
-    }
+app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res) => {
 
-    const notif = {}
-    try {
-        const [row, filelds] = await connect.query('INSERT INTO events ' +
-            '(`id_uniq`,`title`,`description`,`category_id`,`organization_id`,`date_event`,`location`,`target_audience`,`participants_number`,`picture_name`,`event_status`,`author`,`published`) ' +
-            'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [
-            event_uniq,
-            title,
-            description,
-            category_id,
-            organization_id,
-            eventDt,
-            location,
-            target_audience,
-            participants_number,
-            file,
-            event_status,
-            'admin',
-            published
-        ])
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            let body = JSON.parse(req.body.event);
 
-        if (row.insertId > 0) {
-            notif.msg = 'Мероприятие успешно добавлено!!'
-            notif.status = 'success'
-            const countOperation = []
-            for (let i = 0; i < speakers.length; i++) {
-                const [speakerRow, fields] = await connect.query('INSERT INTO relationship_events_speakers (`event_id`,`speakers_id`) VALUES (?,?)', [
+            const title = body['title']
+            const description = body['description']
+            const category_id = body['category_id']
+            const organization_id = body['organization_id']
+            const date_event = body['date_event']
+            const time_event = body['time_event']
+            const location = body['location']
+            const target_audience = body['target_audience']
+            const participants_number = body['participants_number']
+            const event_status = body['event_status'] ? body['event_status'] : 1
+            const published = body['published'] ? body['published'] : 1
+
+
+            const eventDt = date_event + ' ' + time_event;
+            const event_uniq = uuidv4()
+
+            const speakers = body['speakers']
+
+
+            console.log(body)
+
+            let file = 'event_bg.jpg'
+
+            if (req.file) {
+                file = req.file.filename;
+            }
+
+            const notif = {}
+            try {
+                const [row, filelds] = await connect.query('INSERT INTO events ' +
+                    '(`id_uniq`,`title`,`description`,`category_id`,`organization_id`,`date_event`,`location`,`target_audience`,`participants_number`,`picture_name`,`event_status`,`author`,`published`) ' +
+                    'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [
                     event_uniq,
-                    speakers[i]['id']
+                    title,
+                    description,
+                    category_id,
+                    organization_id,
+                    eventDt,
+                    location,
+                    target_audience,
+                    participants_number,
+                    file,
+                    event_status,
+                    'admin',
+                    published
                 ])
-                countOperation.push(speakerRow.affectedRows)
-            }
-            // console.log(countOperation)
-            if (countOperation.length > 0)
-                return res.json(notif)
-            return false
-        } else {
-            notif.msg = 'При обновлении возникла ошибка, обратитесь к администратору'
-            notif.status = 'danger'
-            return res.json(notif)
-        }
 
-    } catch (e) {
-        notif.msg = 'Ошибка при добавлении материала, обратитесь к администратору'
-        notif.status = 'danger'
-        console.log(e.message)
-        return res.json(notif)
-    }
+                if (row.insertId > 0) {
+                    notif.msg = 'Мероприятие успешно добавлено!!'
+                    notif.status = 'success'
+                    const countOperation = []
+                    for (let i = 0; i < speakers.length; i++) {
+                        const [speakerRow, fields] = await connect.query('INSERT INTO relationship_events_speakers (`event_id`,`speakers_id`) VALUES (?,?)', [
+                            event_uniq,
+                            speakers[i]['id']
+                        ])
+                        countOperation.push(speakerRow.affectedRows)
+                    }
+                    // console.log(countOperation)
+                    if (countOperation.length > 0)
+                        return res.json(notif)
+                    return false
+                } else {
+                    notif.msg = 'При обновлении возникла ошибка, обратитесь к администратору'
+                    notif.status = 'danger'
+                    return res.json(notif)
+                }
+
+            } catch (e) {
+                notif.msg = 'Ошибка при добавлении материала, обратитесь к администратору'
+                notif.status = 'danger'
+                console.log(e.message)
+                return res.json(notif)
+            }
+        }
+    })
+
+
 
 })
 
 // Admin user
 
-app.get('/login', async (req, res) => {
-    try {
-        const [checkRow, fields] = await connect.query('SELECT * FROM users')
-        return res.json(checkRow)
-    } catch (e) {
-        console.log(e.message)
-    }
+app.get('/login', ensureToken, async (req, res) => {
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+
+            try {
+                const [checkRow, fields] = await connect.query('SELECT * FROM users')
+                return res.json(checkRow)
+            } catch (e) {
+                console.log(e.message)
+            }
+
+        } else {
+
+            res.json({
+                code: 301
+            })
+        }
+    })
+
+
 })
 
 app.post('/login', upload.single('file'), async (req, res) => {
@@ -380,11 +488,23 @@ app.post('/login', upload.single('file'), async (req, res) => {
     const password = req.body?.password
     console.log(login)
     console.log(password)
+    let token = null;
+    const notif = {}
     try {
         const [checkUser, fileds] = await connect.query('SELECT id FROM users WHERE `login` = ? AND `password` = ?', [
             login, password
         ])
-        console.log(checkUser)
+        if (checkUser.length > 0) {
+            token = jwt.sign(checkUser[0]['id'], process.env.SECRET_KEY);
+            notif.msg = process.env.WELCOME_MSG_RU
+            notif.status = 'success'
+            notif.token = token
+            return res.json(notif)
+        }
+        notif.msg = process.env.LOGIN_MSG_WRONG
+        notif.status = 'danger'
+        return res.json(notif)
+
     } catch (e) {
         console.log(e.message)
     }
