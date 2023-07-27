@@ -14,10 +14,6 @@ import 'dotenv/config'
 import ensureToken from './utils/ensureToken.js'
 
 
-
-
-
-
 const app = express();
 
 app.use(express.json())
@@ -30,15 +26,21 @@ const storage = multer.diskStorage({
         cb(null, 'public/img/event_images')
     },
     filename: (req, file, cb) => {
-        console.log(file)
+        cb(null, file.fieldname + '-' + Date.now() + '.jpg')
+    },
+})
+
+const storage2 = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'public/img/avatars')
+    },
+    filename: (req, file, cb) => {
         cb(null, file.fieldname + '-' + Date.now() + '.jpg')
     },
 })
 
 const upload = multer({ storage: storage })
-
-
-
+const upload2 = multer({ storage: storage2 })
 
 
 const pool = await mysql.createPool({
@@ -50,7 +52,6 @@ const pool = await mysql.createPool({
 })
 
 const connect = pool.promise();
-
 
 
 app.get('/events', async (req, res) => {
@@ -96,7 +97,6 @@ app.get('/event/:id', async (req, res) => {
         console.log(e.message)
     }
 })
-
 
 app.get('/register/:id', async (req, res) => {
     try {
@@ -162,8 +162,7 @@ app.post('/register',
 
     })
 
-
-app.get('/speakers', ensureToken, async (req, res) => {
+app.get('/admin/speakers', ensureToken, async (req, res) => {
 
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -182,7 +181,7 @@ app.get('/speakers', ensureToken, async (req, res) => {
 
 })
 
-app.get('/speaker/:id', ensureToken, async (req, res) => {
+app.get('/admin/speaker/:id', ensureToken, async (req, res) => {
     const id = req.params.id;
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -194,6 +193,11 @@ app.get('/speaker/:id', ensureToken, async (req, res) => {
                 const [speakerList, fields] = await connect.query('SELECT * FROM speakers WHERE id = ?', [
                     id
                 ]);
+                const [genderList, fields2] = await connect.query('SELECT * FROM gender ');
+                speakerList.push(genderList)
+
+                console.log(speakerList)
+
                 res.json(speakerList)
             } catch (e) {
                 console.log(e.message)
@@ -203,7 +207,204 @@ app.get('/speaker/:id', ensureToken, async (req, res) => {
 
 })
 
+app.get('/admin/speaker/edit/:id', ensureToken, async (req, res) => {
 
+    const id = req.params.id;
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+                const [speakerList, fields] = await connect.query('SELECT * FROM speakers WHERE id = ?', [
+                    id
+                ]);
+                const [genderList, fields2] = await connect.query('SELECT * FROM gender ');
+                speakerList.push(genderList)
+
+                console.log(speakerList)
+
+                res.json(speakerList)
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
+
+})
+
+app.post('/admin/speaker/edit/:id', ensureToken, upload2.single('file'), async (req, res) => {
+
+
+    const id = req.body.id;
+    const firstname = req.body.firstname;
+    const surname = req.body.surname;
+    const patronymic = req.body.patronymic;
+    const position = req.body.position;
+    const company = req.body.company;
+    const gender_id = req.body['gender_id'];
+
+
+    let file = 'default_avater.jpg'
+
+    if (req.file) {
+        file = req.file.filename;
+    }
+    const notif = {}
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+
+            try {
+                const [udateData, fields2] =
+                    await connect.query('UPDATE speakers SET `firstname` = ? , `surname` = ?, `patronymic` = ?,`position` =?, ' +
+                        '`company` = ?, `avatar` = ?, `gender_id` = ? WHERE id = ?',
+                        [
+                            firstname,
+                            surname,
+                            patronymic,
+                            position,
+                            company,
+                            file,
+                            gender_id,
+                            id
+                        ]);
+
+                if (udateData.affectedRows > 0) {
+                    notif.msg = 'Данные успешно изменены!'
+                    notif.status = 'success'
+                    return res.json(notif)
+                }
+
+                notif.msg = 'Не удалось добавить изменения!'
+                notif.status = 'danger'
+
+                return res.json(notif)
+
+            } catch (e) {
+                notif.msg = 'Ошибка в операции!'
+                notif.status = 'danger'
+
+                return res.json(notif)
+                console.log(e.message)
+            }
+        }
+    })
+
+})
+
+app.get('/admin/speaker/edit/:id', ensureToken, async (req, res) => {
+
+    const id = req.params.id;
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+                const [speakerList, fields] = await connect.query('SELECT * FROM speakers WHERE id = ?', [
+                    id
+                ]);
+                const [genderList, fields2] = await connect.query('SELECT * FROM gender ');
+                speakerList.push(genderList)
+
+                console.log(speakerList)
+
+                res.json(speakerList)
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
+
+})
+
+app.get('/admin/speaker/add', ensureToken, async (req, res) => {
+
+    console.log('sdsd')
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+                const [genderList, fields2] = await connect.query('SELECT * FROM gender ');
+
+                res.json(genderList)
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
+
+})
+
+app.post('/admin/speaker/add', ensureToken, upload2.single('file'), async (req, res) => {
+
+    const firstname = req.body.firstname;
+    const surname = req.body.surname;
+    const patronymic = req.body.patronymic;
+    const position = req.body.position;
+    const company = req.body.company;
+    const category_id = req.body.category_id;
+
+    let file = null;
+
+    if (category_id === 1) {
+        file = 'man.jpg';
+    } else if (category_id === 2) {
+        file = 'woman.jpg';
+    }
+
+    if (req.file) {
+        file = req.file.filename;
+    }
+
+    const notif = {}
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+                const [row, filelds] = await connect.query('INSERT INTO speakers ' +
+                    '(`firstname`,`surname`,`patronymic`,`position`,`company`,`avatar`,`gender_id`) ' +
+                    'VALUES (?,?,?,?,?,?,?)', [
+                    firstname,
+                    surname,
+                    patronymic,
+                    position,
+                    company,
+                    category_id
+                ])
+                if (row.insertId > 0) {
+                    notif.msg = 'Новый спикер успешно добавлен!!'
+                    notif.status = 'success'
+                    return res.json(notif)
+                } else {
+                    notif.msg = 'Возникла ошибка, обратитесь к администратору'
+                    notif.status = 'danger'
+                    return res.json(notif)
+                }
+            } catch (e) {
+                notif.msg = 'Возникла ошибка, обратитесь к администратору' + e.message
+                notif.status = 'danger'
+                return res.json(notif)
+            }
+        }
+    })
+
+})
 
 app.get('/admin', ensureToken, async (req, res) => {
 
@@ -342,8 +543,6 @@ app.post('/admin/event/edit/:id', ensureToken, upload.single('file'), async (req
 
 })
 
-
-
 app.get('/admin/event/add', ensureToken, async (req, res) => {
 
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
@@ -362,8 +561,6 @@ app.get('/admin/event/add', ensureToken, async (req, res) => {
             }
         }
     })
-
-
 
 })
 
@@ -394,9 +591,6 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
             const event_uniq = uuidv4()
 
             const speakers = body['speakers']
-
-
-            console.log(body)
 
             let file = 'event_bg.jpg'
 
@@ -509,7 +703,6 @@ app.post('/login', upload.single('file'), async (req, res) => {
         console.log(e.message)
     }
 })
-
 
 app.listen(8880, () => {
     console.log('backend')
