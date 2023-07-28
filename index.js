@@ -182,6 +182,7 @@ app.get('/admin/speakers', ensureToken, async (req, res) => {
 })
 
 app.get('/admin/speaker/:id', ensureToken, async (req, res) => {
+    console.log('here')
     const id = req.params.id;
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -190,13 +191,20 @@ app.get('/admin/speaker/:id', ensureToken, async (req, res) => {
             })
         } else {
             try {
+                const notif = {}
                 const [speakerList, fields] = await connect.query('SELECT * FROM speakers WHERE id = ?', [
                     id
                 ]);
-                const [genderList, fields2] = await connect.query('SELECT * FROM gender ');
-                speakerList.push(genderList)
 
-                console.log(speakerList)
+                if (speakerList.length > 0) {
+                    const [genderList, fields2] = await connect.query('SELECT * FROM gender ');
+                    speakerList.push(genderList)
+                } else {
+                    notif.msg = 'Такой пользователь не найден!'
+                    notif.status = 'success'
+                    notif.code = 204
+                    return res.json(notif)
+                }
 
                 res.json(speakerList)
             } catch (e) {
@@ -217,13 +225,22 @@ app.get('/admin/speaker/edit/:id', ensureToken, async (req, res) => {
             })
         } else {
             try {
+                const notif = {}
                 const [speakerList, fields] = await connect.query('SELECT * FROM speakers WHERE id = ?', [
                     id
                 ]);
-                const [genderList, fields2] = await connect.query('SELECT * FROM gender ');
-                speakerList.push(genderList)
+                if (speakerList.length > 0) {
+                    const [genderList, fields2] = await connect.query('SELECT * FROM gender ');
+                    speakerList.push(genderList)
+                } else {
+                    notif.msg = 'Такой пользователь не найден!'
+                    notif.status = 'success'
+                    return res.json(
+                        notif
+                    )
+                }
 
-                console.log(speakerList)
+
 
                 res.json(speakerList)
             } catch (e) {
@@ -246,7 +263,7 @@ app.post('/admin/speaker/edit/:id', ensureToken, upload2.single('file'), async (
     const gender_id = req.body['gender_id'];
 
 
-    let file = 'default_avater.jpg'
+    let file = req.body.avatar;
 
     if (req.file) {
         file = req.file.filename;
@@ -325,9 +342,41 @@ app.get('/admin/speaker/edit/:id', ensureToken, async (req, res) => {
 
 })
 
-app.get('/admin/speaker/add', ensureToken, async (req, res) => {
+app.get('/admin/speaker/delete/:id', ensureToken, async (req, res) => {
+    const id = req.params.id;
 
-    console.log('sdsd')
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+                const notif = {}
+                const [speakerList, fields] = await connect.query('DELETE FROM speakers WHERE id = ?', [
+                    id
+                ]);
+                if (speakerList.affectedRows > 0) {
+                    notif.msg = 'Пользователь удален!'
+                    notif.status = 'success'
+
+                    return res.json(notif)
+                }
+
+                notif.msg = 'Не удалось удалить пользовталея! Обратитесь к администратору!'
+                notif.status = 'danger'
+                return res.json(notif)
+
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
+
+})
+
+app.get('/admin/speaker/add', ensureToken, async (req, res) => {
 
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -349,24 +398,36 @@ app.get('/admin/speaker/add', ensureToken, async (req, res) => {
 
 app.post('/admin/speaker/add', ensureToken, upload2.single('file'), async (req, res) => {
 
-    const firstname = req.body.firstname;
-    const surname = req.body.surname;
-    const patronymic = req.body.patronymic;
-    const position = req.body.position;
-    const company = req.body.company;
-    const category_id = req.body.category_id;
+    let body = JSON.parse(req.body.speaker);
+    console.log('ffff')
+    console.log(body)
+    console.log(req.file)
+    const firstname = body.firstname;
+    const surname = body.surname;
+    const patronymic = body.patronymic;
+    const position = body.position;
+    const company = body.company;
+    const category_id = body.category_id ? body.category_id : 1;
 
-    let file = null;
 
-    if (category_id === 1) {
+    let file = '';
+
+    if (parseInt(category_id) === 1) {
         file = 'man.jpg';
-    } else if (category_id === 2) {
+    }
+    else if (parseInt(category_id) === 2) {
         file = 'woman.jpg';
     }
 
+
     if (req.file) {
+        console.log('tuta')
         file = req.file.filename;
     }
+
+
+    console.log(category_id)
+    console.log(file)
 
     const notif = {}
 
@@ -385,6 +446,7 @@ app.post('/admin/speaker/add', ensureToken, upload2.single('file'), async (req, 
                     patronymic,
                     position,
                     company,
+                    file,
                     category_id
                 ])
                 if (row.insertId > 0) {
@@ -574,6 +636,7 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
         } else {
             let body = JSON.parse(req.body.event);
 
+
             const title = body['title']
             const description = body['description']
             const category_id = body['category_id']
@@ -680,8 +743,7 @@ app.get('/login', ensureToken, async (req, res) => {
 app.post('/login', upload.single('file'), async (req, res) => {
     const login = req.body?.login
     const password = req.body?.password
-    console.log(login)
-    console.log(password)
+
     let token = null;
     const notif = {}
     try {
