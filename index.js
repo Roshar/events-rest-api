@@ -98,6 +98,34 @@ app.get('/event/:id', async (req, res) => {
     }
 })
 
+app.get('/events/cat/:id', async (req, res) => {
+
+    console.log('ddf')
+    console.log(req.params)
+
+    // try {
+    //     const [event, fields1] = await connect.query('SELECT e.id, e.title, e.description, e.category_id, ' +
+    //         'e.organization_id, e.participants_number, DATE_FORMAT(e.date_event,"%d-%m-%Y %H:%i") as date_event,' +
+    //         'e.picture_name, e.event_status, e.location,  e.target_audience ' +
+    //         'FROM events as e ' +
+    //         'WHERE e.id_uniq = ? ',
+    //         [req.params.id])
+
+    //     const [speakers, fields2] = await connect.query('SELECT sp.id, sp.firstname, sp.surname, sp.patronymic, sp.position, ' +
+    //         'sp.company, sp.avatar FROM speakers as sp INNER JOIN relationship_events_speakers as rel ON sp.id = rel.speakers_id ' +
+    //         'WHERE rel.event_id = ? ',
+    //         [req.params.id])
+
+    //     const [enrollers, fields3] = await connect.query('SELECT COUNT(id) as amount FROM enrollers WHERE event_id = ? ',
+    //         [req.params.id])
+    //     console.log(speakers)
+    //     return res.json({ event, speakers, enrollers })
+
+    // } catch (e) {
+    //     console.log(e.message)
+    // }
+})
+
 // REGISTRATION
 
 app.get('/register/:id', async (req, res) => {
@@ -441,7 +469,7 @@ app.get('/admin/speaker', ensureToken, async (req, res) => {
 
 })
 
-app.post('/admin/speaker/add', ensureToken, upload2.single('file'), async (req, res) => {
+app.post('/admin/speaker/create', ensureToken, upload2.single('file'), async (req, res) => {
 
     let body = JSON.parse(req.body.speaker);
     console.log('ffff')
@@ -1005,7 +1033,6 @@ app.post('/admin/report/events', ensureToken, upload.single('file'), async (req,
 
 })
 
-
 app.post('/admin/report/enrollers', ensureToken, upload.single('file'), async (req, res) => {
     const eventData = {}
     if (req.body.event.length > 0) {
@@ -1064,6 +1091,95 @@ app.post('/admin/report/enrollers', ensureToken, upload.single('file'), async (r
 
                     notif.msg = 'Не удалось получить статистику!'
                     notif.status = 'danger'
+
+                    return res.json(notif)
+
+
+
+                } catch (e) {
+                    console.log(e.message)
+                    notif.msg = 'Возникла ошибка, обратитесь к администратору' + e.message
+                    notif.status = 'danger'
+                    return res.json(notif)
+                }
+            }
+        })
+    }
+
+
+
+
+
+
+
+
+
+
+
+})
+
+app.post('/admin/report/enrollers_list', ensureToken, upload.single('file'), async (req, res) => {
+    const eventData = {}
+    if (req.body.event.length > 0) {
+
+        let body = JSON.parse(req.body.event);
+        const notif = {}
+
+        const year = body.year === 'all' ? " " : ' = ' + body.year;
+        const month = body.month === 'all' ? " " : ' = ' + body.month;
+        const categoryId = body.categoryId == 'all' ? " " : ' = ' + body.categoryId;
+        const organizationId = body.organizationId == 'all' ? " " : ' = ' + body.organizationId;
+        const centerId = body.centerId === "all" ? " " : ' = ' + body.centerId
+        const actual = body.actual;
+
+        const ryear = body.year === 'all' ? "не указано" : body.year;
+        const rmonth = body.month === 'all' ? "не указано" : body.month;
+        const rcategoryId = body.categoryId == 'all' ? "не указано" : body.categoryId;
+        const rorganizationId = body.organizationId == 'all' ? "не указано " : body.organizationId;
+        const rcenterId = body.centerId === "all" ? "не указано" : body.centerId
+
+        eventData.year = ryear
+        eventData.month = rmonth
+        eventData.categoryId = rcategoryId
+        eventData.organizationId = rorganizationId
+        eventData.centerId = rcenterId
+        eventData.actual = actual
+
+
+
+        jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+            if (err) {
+
+                notif.code = 403
+                res.json(notif)
+            } else {
+
+                try {
+
+                    const sql = `SELECT en.surname as Фамилия, en.firstname as Имя, en.patronymic as Отчество, en.email as 'Эл. адрес', en.phone as Телефон,
+                    en.position as Должность, en.company as 'Место работы', en.experience as 'стаж', DATE_FORMAT(en.created_at, "%d-%m-%Y") as 'Дата регистрации', a.title_area as 'город/район' FROM enrollers as en 
+                    INNER JOIN events as e ON en.event_id = e.id_uniq
+                    INNER JOIN area as a ON en.area_id = a.id_area  WHERE e.category_id ${categoryId}
+                    AND e.organization_id ${organizationId} AND MONTH(e.date_event) ${month}  AND YEAR(e.date_event) ${year}
+                    AND e.event_status = ${actual} AND e.center_id ${centerId} `
+
+                    const [rows, filelds] = await connect.query(sql)
+
+                    console.log(rows)
+
+                    if (rows.length > 0) {
+                        eventData.enrollers = rows
+                        notif.code = 200;
+                        notif.msg = 'Получена статистка!'
+                        notif.status = 'success'
+                        notif.result = eventData
+                        return res.json(notif)
+                    }
+
+                    notif.msg = 'Пустой список!'
+                    notif.status = 'success'
+                    eventData.enrollers = []
+                    notif.result = eventData
 
                     return res.json(notif)
 
