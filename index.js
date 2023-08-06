@@ -60,12 +60,14 @@ app.get('/events', async (req, res) => {
         const [soon, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
             'c.cat_name, register_status.title as status FROM events as e ' +
             'INNER JOIN category_events as c ON e.category_id = c.id ' +
-            'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.event_status = 1 ORDER BY e.date_event')
+            'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.event_status = 1 ORDER BY e.date_event LIMIT 4')
 
         const [last, fields2] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
             'c.cat_name, register_status.title as status FROM events as e ' +
             'INNER JOIN category_events as c ON e.category_id = c.id ' +
-            'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.event_status = 2 ')
+            'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.event_status = 2 LIMIT 4')
+
+
 
         return res.status(200).json({ soon, last });
     } catch (e) {
@@ -98,32 +100,67 @@ app.get('/event/:id', async (req, res) => {
     }
 })
 
-app.get('/events/cat/:id', async (req, res) => {
+app.get('/events/cat/:filters', async (req, res) => {
 
-    console.log('ddf')
-    console.log(req.params)
+    const params = JSON.parse(req.params.filters)
 
-    // try {
-    //     const [event, fields1] = await connect.query('SELECT e.id, e.title, e.description, e.category_id, ' +
-    //         'e.organization_id, e.participants_number, DATE_FORMAT(e.date_event,"%d-%m-%Y %H:%i") as date_event,' +
-    //         'e.picture_name, e.event_status, e.location,  e.target_audience ' +
-    //         'FROM events as e ' +
-    //         'WHERE e.id_uniq = ? ',
-    //         [req.params.id])
 
-    //     const [speakers, fields2] = await connect.query('SELECT sp.id, sp.firstname, sp.surname, sp.patronymic, sp.position, ' +
-    //         'sp.company, sp.avatar FROM speakers as sp INNER JOIN relationship_events_speakers as rel ON sp.id = rel.speakers_id ' +
-    //         'WHERE rel.event_id = ? ',
-    //         [req.params.id])
+    const year = params.year ? ` AND YEAR(e.date_event) = ${params.year} ` : ""
+    const month = params.month ? ` AND MONTH(e.date_event) = ${params.month} ` : ""
+    const category = params.category ? ` = ${params.category} ` : ""
+    const offset = (params.offset != 0) ? ` OFFSET ${params.offset} ` : `OFFSET 0`
+    const limit = ` LIMIT ${params.limit} `
 
-    //     const [enrollers, fields3] = await connect.query('SELECT COUNT(id) as amount FROM enrollers WHERE event_id = ? ',
-    //         [req.params.id])
-    //     console.log(speakers)
-    //     return res.json({ event, speakers, enrollers })
+    try {
+        const [soon, fileds] = await connect.query(`
+        SELECT e.id,e.id_uniq, e.title, e.category_id, 
+        DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, 
+        e.picture_name, e.event_status,
+        c.cat_name, register_status.title as status FROM events as e  
+        INNER JOIN category_events as c ON e.category_id = c.id
+        INNER JOIN register_status ON register_status.id = e.event_status 
+        WHERE e.event_status = 1 AND e.category_id ${category}  ${year} ${month} ORDER BY
+         e.date_event  ${limit}  ${offset} `)
 
-    // } catch (e) {
-    //     console.log(e.message)
-    // }
+        return res.json({ soon })
+
+    } catch (e) {
+        console.log(e.message)
+    }
+})
+
+app.get('/events/cat/last/:filters', async (req, res) => {
+
+    const params = JSON.parse(req.params.filters)
+
+
+    const year = params.year ? ` AND YEAR(e.date_event) = ${params.year} ` : ""
+    const month = params.month ? ` AND MONTH(e.date_event) = ${params.month} ` : ""
+    const category = params.category ? ` = ${params.category} ` : ""
+    const offset = (params.offset != 0) ? ` OFFSET ${params.offset} ` : `OFFSET 0`
+    const limit = ` LIMIT ${params.limit} `
+
+
+    try {
+
+        const sql = `
+        SELECT e.id,e.id_uniq, e.title, e.category_id, 
+        DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, 
+        e.picture_name, e.event_status,
+        c.cat_name, register_status.title as status FROM events as e 
+        INNER JOIN category_events as c ON e.category_id = c.id
+        INNER JOIN register_status ON register_status.id = e.event_status 
+        WHERE e.event_status = 2 AND e.category_id ${category}  ${year} ${month} ORDER BY 
+        e.date_event  ${limit}  ${offset}`
+
+
+        const [last, fileds] = await connect.query(sql)
+
+        return res.json({ last })
+
+    } catch (e) {
+        console.log(e.message)
+    }
 })
 
 // REGISTRATION
@@ -152,6 +189,9 @@ app.post('/register',
 
     async (req, res) => {
 
+        console.log(req.body)
+
+
         const result = validationResult(req);
 
         if (result.isEmpty()) {
@@ -162,8 +202,8 @@ app.post('/register',
                     return res.json({ msg: `Пользователь с таким электронным адресом (${email[0].email}) уже зарегистрирован на данное мероприятие !`, status: 200, errorIsRow: 1 })
                 }
                 const [row, filelds] = await connect.query('INSERT INTO enrollers ' +
-                    '(`event_id`,`surname`,`firstname`,`patronymicw`,`email`,`phone`,`position`,`company`,`experience`,`area_id`,`uniq_serial_for_link`) ' +
-                    'VALUES (?,?,?,?,?,?,?,?,?,?)', [
+                    '(`event_id`,`surname`,`firstname`,`patronymic`,`email`,`phone`,`position`,`company`,`experience`,`area_id`,`uniq_serial_for_link`) ' +
+                    'VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
                     req.body.event_id, req.body.surname, req.body.firstname, req.body.patronymic, req.body.email, req.body.phone, req.body.position, req.body.company, req.body.experience,
                     req.body.area_id, user_id_link
                 ])
@@ -189,6 +229,22 @@ app.post('/register',
     })
 
 // ADMIN PANEL
+app.get('/checkRole', ensureToken, async (req, res) => {
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            res.json({
+                code: 200
+            })
+        }
+    })
+
+})
+
 
 app.get('/admin', ensureToken, async (req, res) => {
 
@@ -472,7 +528,7 @@ app.get('/admin/speaker', ensureToken, async (req, res) => {
 app.post('/admin/speaker/create', ensureToken, upload2.single('file'), async (req, res) => {
 
     let body = JSON.parse(req.body.speaker);
-    console.log('ffff')
+
     console.log(body)
     console.log(req.file)
     const firstname = body.firstname;
@@ -896,6 +952,8 @@ app.get('/login', ensureToken, async (req, res) => {
 
 
 })
+
+
 
 app.post('/login', upload.single('file'), async (req, res) => {
     const login = req.body?.login
