@@ -188,10 +188,6 @@ app.post('/register',
     body('experience').notEmpty(),
 
     async (req, res) => {
-
-        console.log(req.body)
-
-
         const result = validationResult(req);
 
         if (result.isEmpty()) {
@@ -199,7 +195,7 @@ app.post('/register',
             try {
                 const [email, filelds2] = await connect.query('SELECT email FROM enrollers WHERE event_id = ? AND email = ?', [req.body.event_id, req.body.email]);
                 if (email.length > 0) {
-                    return res.json({ msg: `Пользователь с таким электронным адресом (${email[0].email}) уже зарегистрирован на данное мероприятие !`, status: 200, errorIsRow: 1 })
+                    return res.json({ msg: `Пользователь с таким электронным адресом (${email[0].email}) уже зарегистрирован на данное мероприятие !`, status: 402, errorIsRow: 1 })
                 }
                 const [row, filelds] = await connect.query('INSERT INTO enrollers ' +
                     '(`event_id`,`surname`,`firstname`,`patronymic`,`email`,`phone`,`position`,`company`,`experience`,`area_id`,`uniq_serial_for_link`) ' +
@@ -231,12 +227,16 @@ app.post('/register',
 // ADMIN PANEL
 app.get('/checkRole', ensureToken, async (req, res) => {
 
+    console.log('checkRole')
+
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
+            console.log(err)
             res.json({
                 code: 403
             })
         } else {
+
             res.json({
                 code: 200
             })
@@ -246,7 +246,10 @@ app.get('/checkRole', ensureToken, async (req, res) => {
 })
 
 
-app.get('/admin', ensureToken, async (req, res) => {
+app.get('/admin/main/:params', ensureToken, async (req, res) => {
+
+    const params = JSON.parse(req.params.params)
+
 
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -255,10 +258,15 @@ app.get('/admin', ensureToken, async (req, res) => {
             })
         } else {
             try {
-                const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,' +
-                    'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e ' +
-                    'INNER JOIN category_events as c ON e.category_id = c.id ' +
-                    'INNER JOIN register_status ON register_status.id = e.event_status  ORDER BY e.date_event')
+
+                const offset = (params.firstIndex > 0) ? `OFFSET ${params.firstIndex}` : '';
+                const limit = `LIMIT 5`;
+
+                console.log(offset)
+                const [events, fields] = await connect.query(`SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,
+                    DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e 
+                    INNER JOIN category_events as c ON e.category_id = c.id 
+                    INNER JOIN register_status ON register_status.id = e.event_status  ORDER BY e.date_event DESC  ${limit} ${offset}`)
                 res.json(events)
             } catch (e) {
                 console.log(e.message)
@@ -271,7 +279,12 @@ app.get('/admin', ensureToken, async (req, res) => {
 
 // SPEAKERS
 
-app.get('/admin/speakers', ensureToken, async (req, res) => {
+app.get('/admin/speakers/:params', ensureToken, async (req, res) => {
+
+    const params = JSON.parse(req.params.params)
+
+
+
 
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -280,7 +293,11 @@ app.get('/admin/speakers', ensureToken, async (req, res) => {
             })
         } else {
             try {
-                const [speakerList, fields] = await connect.query('SELECT * FROM speakers');
+
+                const offset = (params.firstIndex > 0) ? `OFFSET ${params.firstIndex}` : '';
+                const limit = `LIMIT 5`;
+
+                const [speakerList, fields] = await connect.query(`SELECT * FROM speakers ORDER BY surname  ${limit} ${offset}`);
                 res.json(speakerList)
             } catch (e) {
                 console.log(e.message)
@@ -291,7 +308,9 @@ app.get('/admin/speakers', ensureToken, async (req, res) => {
 })
 
 app.get('/admin/speaker/:id', ensureToken, async (req, res) => {
-    console.log('ededddedddddd')
+
+    console.log('/admin/speaker/:id')
+
     const id = req.params.id;
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -361,7 +380,7 @@ app.get('/admin/speaker/edit/:id', ensureToken, async (req, res) => {
 })
 
 app.post('/admin/speaker/edit/:id', ensureToken, upload2.single('file'), async (req, res) => {
-
+    console.log('/admin/speaker/edit/:id')
 
     const id = req.body.id;
     const firstname = req.body.firstname;
@@ -425,7 +444,7 @@ app.post('/admin/speaker/edit/:id', ensureToken, upload2.single('file'), async (
 })
 
 app.get('/admin/speaker/edit/:id', ensureToken, async (req, res) => {
-
+    console.log('/admin/speaker/edit/:id')
     const id = req.params.id;
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -454,7 +473,7 @@ app.get('/admin/speaker/edit/:id', ensureToken, async (req, res) => {
 app.get('/admin/speaker/delete/:id', ensureToken, async (req, res) => {
     const id = req.params.id;
 
-
+    console.log('/admin/speaker/delete/:id')
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
             res.json({
@@ -506,6 +525,8 @@ app.get('/admin/speaker/delete/:id', ensureToken, async (req, res) => {
 })
 
 app.get('/admin/speaker', ensureToken, async (req, res) => {
+
+    console.log('/admin/speaker')
 
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -600,7 +621,6 @@ app.post('/admin/speaker/create', ensureToken, upload2.single('file'), async (re
 
 // EVENTS ADMIN
 
-
 app.get('/admin/event/edit/:id', ensureToken, async (req, res) => {
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -627,7 +647,6 @@ app.get('/admin/event/edit/:id', ensureToken, async (req, res) => {
     })
 
 })
-
 
 app.post('/admin/event/edit/:id', ensureToken, upload.single('file'), async (req, res) => {
 
@@ -834,6 +853,36 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
 
 })
 
+app.get('/admin/event/show_enrollers/:id', ensureToken, async (req, res) => {
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+
+                // console.log(`backend - ${JSON.parse(req.params)}`)
+                const id = req.params.id;
+                if (id.length > 0) {
+                    
+                }
+                const [usersList, fields] = await connect.query(`SELECT  e.id, e.surname , e.firstname, e.email,
+                    e.phone, e.position, e.company, e.experience, e.uniq_serial_for_link, a.id_area, a.title_area, event.title, event.id_uniq FROM 
+                    enrollers as e INNER JOIN area as a ON e.area_id = a.id_area 
+                    INNER JOIN events as event ON e.event_id = event.id_uniq`);
+                res.json(usersList)
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
+
+})
+
+
+
 // USERS enrollers
 
 app.get('/admin/enrollers', ensureToken, async (req, res) => {
@@ -928,6 +977,7 @@ app.get('/admin/enroller/delete/:id', ensureToken, async (req, res) => {
 
 })
 
+
 // USER ADMIN
 
 app.get('/login', ensureToken, async (req, res) => {
@@ -952,8 +1002,6 @@ app.get('/login', ensureToken, async (req, res) => {
 
 
 })
-
-
 
 app.post('/login', upload.single('file'), async (req, res) => {
     const login = req.body?.login
@@ -1177,6 +1225,9 @@ app.post('/admin/report/enrollers', ensureToken, upload.single('file'), async (r
 })
 
 app.post('/admin/report/enrollers_list', ensureToken, upload.single('file'), async (req, res) => {
+
+    console.log('sdsdsd')
+
     const eventData = {}
     if (req.body.event.length > 0) {
 
@@ -1264,6 +1315,7 @@ app.post('/admin/report/enrollers_list', ensureToken, upload.single('file'), asy
 
 
 })
+
 app.listen(8880, () => {
     console.log('backend')
 })
