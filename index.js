@@ -863,16 +863,38 @@ app.get('/admin/event/show_enrollers/:id', ensureToken, async (req, res) => {
         } else {
             try {
 
-                // console.log(`backend - ${JSON.parse(req.params)}`)
                 const id = req.params.id;
+
+
                 if (id.length > 0) {
-                    
+
+                    const result = {}
+
+                    const [getTitleEvent, fields1] = await connect.query(`SELECT title FROM events WHERE id_uniq = ?`, [
+                        id
+                    ]);
+
+
+
+                    if (getTitleEvent.length > 0) {
+                        result.title = getTitleEvent[0]['title'];
+
+                        const [usersList, fields] = await connect.query(`SELECT  e.id, e.surname , e.firstname, e.email,
+                        e.phone, e.position, e.company, e.experience, e.uniq_serial_for_link, a.id_area, a.title_area, event.title, event.id_uniq FROM 
+                        enrollers as e INNER JOIN area as a ON e.area_id = a.id_area 
+                        INNER JOIN events as event ON e.event_id = event.id_uniq WHERE event.id_uniq = ?`, [
+                            id
+                        ]);
+                        result.enrollers = usersList
+                        return res.json(result)
+                    }
+
+                    return res.json([])
+
+                } else {
+                    return res.json([])
                 }
-                const [usersList, fields] = await connect.query(`SELECT  e.id, e.surname , e.firstname, e.email,
-                    e.phone, e.position, e.company, e.experience, e.uniq_serial_for_link, a.id_area, a.title_area, event.title, event.id_uniq FROM 
-                    enrollers as e INNER JOIN area as a ON e.area_id = a.id_area 
-                    INNER JOIN events as event ON e.event_id = event.id_uniq`);
-                res.json(usersList)
+
             } catch (e) {
                 console.log(e.message)
             }
@@ -954,17 +976,20 @@ app.get('/admin/enroller/delete/:id', ensureToken, async (req, res) => {
                     if (enrroler.affectedRows > 0) {
                         notif.msg = 'Пользователь удален!'
                         notif.status = 'success'
+                        notif.code = 200
 
                         return res.json(notif)
                     }
 
                     notif.msg = 'Не удалось удалить пользовталея! Обратитесь к администратору!'
                     notif.status = 'danger'
+                    notif.code = 500
                     return res.json(notif)
 
                 } else {
                     notif.msg = 'Такой пользователь не найден!'
                     notif.status = 'danger'
+                    notif.code = 201
                     return res.json(notif)
                 }
 
