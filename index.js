@@ -630,7 +630,7 @@ app.get('/admin/event/edit/:id', ensureToken, async (req, res) => {
         } else {
             try {
 
-                const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.description, e.category_id, e.organization_id, e.center_id, DATE_FORMAT(e.date_event, "%Y-%m-%d")as date_event,  DATE_FORMAT(e.date_event, "%h:%i") as  time_event, e.location, e.picture_name, e.target_audience,e.participants_number, e.event_status,' +
+                const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.description, e.category_id, e.organization_id, e.center_id, DATE_FORMAT(e.date_event, "%Y-%m-%d")as date_event,  DATE_FORMAT(e.date_event, "%h:%i") as  time_event, e.location, e.picture_name, e.target_audience,e.participants_number,e.limit_enrollers, e.event_status,' +
                     'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e ' +
                     'INNER JOIN category_events as c ON e.category_id = c.id ' +
                     'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.id_uniq = ? ', [req.params.id])
@@ -656,6 +656,9 @@ app.post('/admin/event/edit/:id', ensureToken, upload.single('file'), async (req
                 code: 403
             })
         } else {
+
+            console.log(req.body)
+            return
 
             const data = req.body;
             const title = req.body.title;
@@ -768,6 +771,8 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
             })
         } else {
             let body = JSON.parse(req.body.event);
+
+
             let organization_id = JSON.parse(req.body.organizationId);
             let center_id = JSON.parse(req.body.centerId) ? JSON.parse(req.body.centerId) : ''
 
@@ -784,7 +789,8 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
             const target_audience = body['target_audience']
             const participants_number = body['participants_number']
             const event_status = body['event_status'] ? body['event_status'] : 1
-            const published = body['published'] ? body['published'] : 1
+            const published = body['published'] ? body['published'] : 1;
+            const limitEnrollers = (body['limit'] === 'true') ? "true" : "";
 
 
             const eventDt = date_event + ' ' + time_event;
@@ -801,8 +807,8 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
             const notif = {}
             try {
                 const [row, filelds] = await connect.query('INSERT INTO events ' +
-                    '(`id_uniq`,`title`,`description`,`category_id`,`organization_id`,`center_id`,`date_event`,`location`,`target_audience`,`participants_number`,`picture_name`,`event_status`,`author`,`published`) ' +
-                    'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+                    '(`id_uniq`,`title`,`description`,`category_id`,`organization_id`,`center_id`,`date_event`,`location`,`target_audience`,`participants_number`, `limit_enrollers`, `picture_name`,`event_status`,`author`,`published`) ' +
+                    'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
                     event_uniq,
                     title,
                     description,
@@ -813,6 +819,7 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
                     location,
                     target_audience,
                     participants_number,
+                    limitEnrollers,
                     file,
                     event_status,
                     'admin',
@@ -887,6 +894,55 @@ app.get('/admin/event/show_enrollers/:id', ensureToken, async (req, res) => {
                         ]);
                         result.enrollers = usersList
                         return res.json(result)
+                    }
+
+                    return res.json([])
+
+                } else {
+                    return res.json([])
+                }
+
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
+
+})
+
+app.get('/admin/event/show_enrollers_for_excel/:id', ensureToken, async (req, res) => {
+
+
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+
+                const id = req.params.id;
+
+                if (id.length > 0) {
+
+                    const [getTitleEvent, fields1] = await connect.query(`SELECT title FROM events WHERE id_uniq = ?`, [
+                        id
+                    ]);
+
+                    if (getTitleEvent.length > 0) {
+
+
+                        const [usersList, fields] = await connect.query(`SELECT  e.surname as 'Фамилия', e.firstname as 'Имя',  e.patronymic as 'Отчество', e.email as 'Эл.почта',
+                        e.phone as 'Телефон', e.position as 'Должность', e.company as 'Место работы', e.experience as 'Стаж',  a.title_area as 'Район' FROM 
+                        enrollers as e INNER JOIN area as a ON e.area_id = a.id_area 
+                        INNER JOIN events as event ON e.event_id = event.id_uniq WHERE event.id_uniq = ?`, [
+                            id
+                        ]);
+
+                        console.log(usersList)
+
+                        return res.json(usersList)
                     }
 
                     return res.json([])
