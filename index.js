@@ -44,12 +44,22 @@ const upload = multer({ storage: storage })
 const upload2 = multer({ storage: storage2 })
 
 
+// const pool = await mysql.createPool({
+//     host: 'localhost',
+//     user: 'root',
+//     password: '',
+//     database: 'govzalla_events',
+//     port: 8889
+
+// })
+
 const pool = await mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: 'root',
-    database: 'govzalla_events',
-    port: 8889
+    host: process.env.DATABASE_HOST,
+    user: process.env.DATABASE_USER,
+    password: '',
+    database: process.env.DATABASE,
+    port: process.env.DATABASE_PORT
+
 })
 
 const connect = pool.promise();
@@ -85,8 +95,6 @@ app.get('/events', async (req, res) => {
             'c.cat_name, register_status.title as status FROM events as e ' +
             'INNER JOIN category_events as c ON e.category_id = c.id ' +
             'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.event_status = 2 LIMIT 4')
-
-
 
         return res.status(200).json({ soon, last });
     } catch (e) {
