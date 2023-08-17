@@ -54,6 +54,24 @@ const pool = await mysql.createPool({
 
 const connect = pool.promise();
 
+app.get('/test', async (req, res) => {
+
+    const result = [
+        {
+            id: 1,
+            name: "Ddddd"
+        },
+        {
+            id: 2,
+            name: "Ddddd"
+        },
+        {
+            id: 3,
+            name: "Ddddd"
+        }
+    ]
+    return res.status(200).json(result);
+})
 
 app.get('/events', async (req, res) => {
 
