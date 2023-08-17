@@ -13,6 +13,7 @@ import jwt from "jsonwebtoken"
 import 'dotenv/config'
 import ensureToken from './utils/ensureToken.js'
 
+const PORT = process.env.PORT || 8080
 
 const app = express();
 
@@ -1397,7 +1398,7 @@ app.post('/admin/report/enrollers_list', ensureToken, upload.single('file'), asy
 
 })
 
-app.listen(8880, () => {
-    console.log('backend')
+app.listen(PORT, () => {
+    console.log('port ' + PORT + ' is run ')
 })
 
