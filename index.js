@@ -59,9 +59,10 @@ const upload2 = multer({ storage: storage2 })
 const pool = await mysql.createPool({
     host: process.env.DATABASE_HOST,
     user: process.env.DATABASE_USER,
-    password: process.env.DATABASE_USER,
+    password: process.env.DATABASE_PASS,
     database: process.env.DATABASE,
-    port: process.env.DATABASE_PORT
+    port: process.env.DATABASE_PORT,
+    socketPath: '/var/run/mysqld/mysqld.sock'
 
 })
 
