@@ -13,7 +13,7 @@ import jwt from "jsonwebtoken"
 import 'dotenv/config'
 import ensureToken from './utils/ensureToken.js'
 
-const PORT = process.env.DATABASE_PORT || 8080
+const PORT = process.env.PORT || 8080
 
 const app = express();
 
@@ -44,6 +44,9 @@ const upload = multer({ storage: storage })
 const upload2 = multer({ storage: storage2 })
 
 
+
+
+
 // const pool = await mysql.createPool({
 //     host: 'localhost',
 //     user: 'root',
@@ -56,7 +59,7 @@ const upload2 = multer({ storage: storage2 })
 const pool = await mysql.createPool({
     host: process.env.DATABASE_HOST,
     user: process.env.DATABASE_USER,
-    password: '',
+    password: process.env.DATABASE_USER,
     database: process.env.DATABASE,
     port: process.env.DATABASE_PORT
 
