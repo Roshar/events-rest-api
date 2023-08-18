@@ -45,7 +45,6 @@ const upload2 = multer({ storage: storage2 })
 
 
 
-
 const pool = await mysql.createPool({
     host: process.env.DATABASE_HOST,
     user: process.env.DATABASE_USER,
@@ -784,6 +783,8 @@ app.get('/admin/event/add', ensureToken, async (req, res) => {
 
 app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res) => {
 
+
+
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
             res.json({
@@ -791,7 +792,6 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
             })
         } else {
             let body = JSON.parse(req.body.event);
-
 
             let organization_id = JSON.parse(req.body.organizationId);
             let center_id = JSON.parse(req.body.centerId) ? JSON.parse(req.body.centerId) : ''
