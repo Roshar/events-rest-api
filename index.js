@@ -97,11 +97,11 @@ app.get('/events', async (req, res) => {
 app.get('/event/:id', async (req, res) => {
 
     try {
-        const [event, fields1] = await connect.query('SELECT e.id, e.title, e.description, e.category_id, ' +
-            'e.organization_id, e.participants_number, DATE_FORMAT(e.date_event,"%d-%m-%Y %H:%i") as date_event,' +
-            'e.picture_name, e.event_status, e.location,  e.target_audience ' +
-            'FROM events as e ' +
-            'WHERE e.id_uniq = ? ',
+        const [event, fields1] = await connect.query(`SELECT e.id, e.title, e.description, e.category_id, 
+            e.organization_id, e.participants_number, DATE_FORMAT(e.date_event,"%d-%m-%Y %H:%i") as date_event,
+            e.picture_name, e.event_status, e.location, e.target_audience 
+            FROM events as e 
+            WHERE e.id_uniq = ?`,
             [req.params.id])
 
         const [speakers, fields2] = await connect.query('SELECT sp.id, sp.firstname, sp.surname, sp.patronymic, sp.position, ' +
@@ -182,6 +182,7 @@ app.get('/events/cat/last/:filters', async (req, res) => {
     }
 })
 
+
 // REGISTRATION
 
 app.get('/register/:id', async (req, res) => {
@@ -216,13 +217,32 @@ app.post('/register',
                 if (email.length > 0) {
                     return res.json({ msg: `Пользователь с таким электронным адресом (${email[0].email}) уже зарегистрирован на данное мероприятие !`, status: 402, errorIsRow: 1 })
                 }
-                const [row, filelds] = await connect.query('INSERT INTO enrollers ' +
-                    '(`event_id`,`surname`,`firstname`,`patronymic`,`email`,`phone`,`position`,`company`,`experience`,`area_id`,`uniq_serial_for_link`) ' +
-                    'VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
-                    req.body.event_id, req.body.surname, req.body.firstname, req.body.patronymic, req.body.email, req.body.phone, req.body.position, req.body.company, req.body.experience,
-                    req.body.area_id, user_id_link
-                ])
-                return res.json({ msg: "Вы успешно зарегистрированы на мероприятие!", user_id_link, status: 200 })
+                const [limitRow, fields3] = await connect.query(`SELECT limit_enrollers, participants_number FROM events WHERE id_uniq = ?`, [req.body.event_id])
+
+                if (limitRow[0]['limit_enrollers'] === null) {
+                    const [row, filelds] = await connect.query('INSERT INTO enrollers ' +
+                        '(`event_id`,`surname`,`firstname`,`patronymic`,`email`,`phone`,`position`,`company`,`experience`,`area_id`,`uniq_serial_for_link`) ' +
+                        'VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
+                        req.body.event_id, req.body.surname, req.body.firstname, req.body.patronymic, req.body.email, req.body.phone, req.body.position, req.body.company, req.body.experience,
+                        req.body.area_id, user_id_link
+                    ])
+                    return res.json({ msg: "Вы успешно зарегистрированы на мероприятие!", user_id_link, status: 200 })
+                } else if (limitRow[0]['limit_enrollers'] !== null) {
+                    const [countEnrollers, fields3] = await connect.query(`SELECT COUNT(id) as count FROM enrollers WHERE event_id = ?`, [req.body.event_id])
+                    if (countEnrollers[0]['count'] + 1 < limitRow[0]['participants_number']) {
+                        const [row, filelds] = await connect.query('INSERT INTO enrollers ' +
+                            '(`event_id`,`surname`,`firstname`,`patronymic`,`email`,`phone`,`position`,`company`,`experience`,`area_id`,`uniq_serial_for_link`) ' +
+                            'VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
+                            req.body.event_id, req.body.surname, req.body.firstname, req.body.patronymic, req.body.email, req.body.phone, req.body.position, req.body.company, req.body.experience,
+                            req.body.area_id, user_id_link
+                        ])
+                        return res.json({ msg: "Вы успешно зарегистрированы на мероприятие!", user_id_link, status: 200 })
+                    } else {
+                        return res.json({ msg: `Ограничение на количество участников! К сожалению, Вы не можете зарегистрироваться из-за  ограничений на количество учаcтников на данное мероприятие `, status: 402, errorIsRow: 1 })
+                    }
+                }
+
+
             } catch (e) {
                 console.log('ошибка')
                 console.log(e)
@@ -230,18 +250,19 @@ app.post('/register',
             }
         }
 
-        [
-            {
-                type: 'field',
-                value: '',
-                msg: 'Invalid value',
-                path: 'company',
-                location: 'body'
-            }
-        ]
+        // [
+        //     {
+        //         type: 'field',
+        //         value: '',
+        //         msg: 'Invalid value',
+        //         path: 'company',
+        //         location: 'body'
+        //     }
+        // ]
         console.log(result.array())
         res.send({ errors: result.array() });
     })
+
 
 // ADMIN PANEL
 app.get('/checkRole', ensureToken, async (req, res) => {
@@ -267,8 +288,9 @@ app.get('/checkRole', ensureToken, async (req, res) => {
 
 app.get('/admin/main/:params', ensureToken, async (req, res) => {
 
-    const params = JSON.parse(req.params.params)
+    console.log('sdsd')
 
+    const params = JSON.parse(req.params.params)
 
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
@@ -281,11 +303,13 @@ app.get('/admin/main/:params', ensureToken, async (req, res) => {
                 const offset = (params.firstIndex > 0) ? `OFFSET ${params.firstIndex}` : '';
                 const limit = `LIMIT 5`;
 
-                console.log(offset)
-                const [events, fields] = await connect.query(`SELECT e.id,e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,
+
+                const [events, fields] = await connect.query(`SELECT e.id, e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,
                     DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e 
                     INNER JOIN category_events as c ON e.category_id = c.id 
-                    INNER JOIN register_status ON register_status.id = e.event_status  ORDER BY e.date_event DESC  ${limit} ${offset}`)
+                    INNER JOIN register_status ON register_status.id = e.event_status
+                    ORDER BY e.date_event DESC  ${limit} ${offset}`)
+
                 res.json(events)
             } catch (e) {
                 console.log(e.message)
@@ -676,9 +700,6 @@ app.post('/admin/event/edit/:id', ensureToken, upload.single('file'), async (req
             })
         } else {
 
-            console.log(req.body)
-            return
-
             const data = req.body;
             const title = req.body.title;
             const description = req.body.description;
@@ -978,6 +999,73 @@ app.get('/admin/event/show_enrollers_for_excel/:id', ensureToken, async (req, re
     })
 
 })
+
+app.get('/admin/event/delete/:id', ensureToken, async (req, res) => {
+    const id = req.params.id;
+
+
+    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+        if (err) {
+            res.json({
+                code: 403
+            })
+        } else {
+            try {
+                const notif = {}
+                const [checkRowDel, fields2] = await connect.query('SELECT id_uniq FROM events WHERE id_uniq = ?', [
+                    id
+                ])
+
+
+
+                if (checkRowDel.length > 0) {
+
+                    const [checkEmptySubscribes, fields3] = await connect.query(`SELECT COUNT(id) as count FROM enrollers WHERE event_id = ?`, [id])
+
+
+                    if (checkEmptySubscribes[0]['count'] === 0) {
+
+                        const [enrroler, fields] = await connect.query('DELETE FROM events WHERE id_uniq = ?', [
+                            id
+                        ]);
+
+                        if (enrroler.affectedRows > 0) {
+                            notif.msg = 'Мероприятие удалено!'
+                            notif.status = 'success'
+                            notif.code = 200
+
+                            return res.json(notif)
+                        }
+
+                        notif.msg = 'Не удалось удалить мероприятие! Обратитесь к администратору!'
+                        notif.status = 'danger'
+                        notif.code = 500
+                        return res.json(notif)
+
+
+                    } else {
+                        notif.msg = 'Не удалось удалить мероприятие! Необходимо удалить всех зарегистрированных на мероприятие пользователей!'
+                        notif.status = 'danger'
+                        notif.code = 500
+                        return res.json(notif)
+                    }
+
+                } else {
+                    notif.msg = 'Мероприятияе не найдено!'
+                    notif.status = 'danger'
+                    notif.code = 201
+                    return res.json(notif)
+                }
+
+
+            } catch (e) {
+                console.log(e.message)
+            }
+        }
+    })
+
+})
+
 
 
 
