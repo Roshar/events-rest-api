@@ -705,7 +705,7 @@ app.post('/admin/event/edit/:id', ensureToken, upload.single('file'), async (req
             const description = req.body.description;
             const category_id = req.body['category_id'];
             const organization_id = req.body['organization_id'];
-            const center_id = req.body['center_id'] ? req.body['center_id'] : null;
+            const center_id = req.body['center_id'] ? req.body['center_id'] : 20;
             const location = req.body['location'];
             const target_audience = req.body['target_audience'];
             const participants_number = req.body['participants_number'];
