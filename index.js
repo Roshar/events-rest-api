@@ -25,19 +25,32 @@ app.use(express.static('public'))
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'public/img/event_images')
+        console.log('storage')
     },
     filename: (req, file, cb) => {
+
         cb(null, file.fieldname + '-' + Date.now() + '.jpg')
     },
+    onError: function (err, next) {
+        console.log('error', err);
+        next(err);
+    }
 })
 
 const storage2 = multer.diskStorage({
     destination: (req, file, cb) => {
+
+        console.log('storage2')
         cb(null, 'public/img/avatars')
     },
     filename: (req, file, cb) => {
+
         cb(null, file.fieldname + '-' + Date.now() + '.jpg')
     },
+    onError: function (err, next) {
+        console.log('error', err);
+        next(err);
+    }
 })
 
 const upload = multer({ storage: storage })
@@ -422,67 +435,81 @@ app.get('/admin/speaker/edit/:id', ensureToken, async (req, res) => {
 
 })
 
-app.post('/admin/speaker/edit/:id', ensureToken, upload2.single('file'), async (req, res) => {
-    console.log('/admin/speaker/edit/:id')
+const upp = upload2.single('file')
 
-    const id = req.body.id;
-    const firstname = req.body.firstname;
-    const surname = req.body.surname;
-    const patronymic = req.body.patronymic;
-    const position = req.body.position;
-    const company = req.body.company;
-    const gender_id = req.body['gender_id'];
+app.post('/admin/speaker/edit/:id', ensureToken, async (req, res) => {
 
+    upp(req, res, function (err) {
 
-    let file = req.body.avatar;
-
-    if (req.file) {
-        file = req.file.filename;
-    }
-    const notif = {}
-
-    jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
-            res.json({
-                code: 403
-            })
-        } else {
-
-            try {
-                const [udateData, fields2] =
-                    await connect.query('UPDATE speakers SET `firstname` = ? , `surname` = ?, `patronymic` = ?,`position` =?, ' +
-                        '`company` = ?, `avatar` = ?, `gender_id` = ? WHERE id = ?',
-                        [
-                            firstname,
-                            surname,
-                            patronymic,
-                            position,
-                            company,
-                            file,
-                            gender_id,
-                            id
-                        ]);
-
-                if (udateData.affectedRows > 0) {
-                    notif.msg = 'Данные успешно изменены!'
-                    notif.status = 'success'
-                    return res.json(notif)
-                }
-
-                notif.msg = 'Не удалось добавить изменения!'
-                notif.status = 'danger'
-
-                return res.json(notif)
-
-            } catch (e) {
-                notif.msg = 'Ошибка в операции!'
-                notif.status = 'danger'
-
-                return res.json(notif)
-                console.log(e.message)
-            }
+            console.log({ message: err })
+            return
         }
+
+        console.log(req.body)
+
+        const id = req.body.id;
+        const firstname = req.body.firstname;
+        const surname = req.body.surname;
+        const patronymic = req.body.patronymic;
+        const position = req.body.position;
+        const company = req.body.company;
+        const gender_id = req.body['gender_id'];
+
+
+        let file = req.body.avatar;
+
+        if (req.file) {
+            file = req.file.filename;
+        }
+        const notif = {}
+
+        jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
+            if (err) {
+                res.json({
+                    code: 403
+                })
+            } else {
+
+                try {
+                    const [udateData, fields2] =
+                        await connect.query('UPDATE speakers SET `firstname` = ? , `surname` = ?, `patronymic` = ?,`position` =?, ' +
+                            '`company` = ?, `avatar` = ?, `gender_id` = ? WHERE id = ?',
+                            [
+                                firstname,
+                                surname,
+                                patronymic,
+                                position,
+                                company,
+                                file,
+                                gender_id,
+                                id
+                            ]);
+
+                    if (udateData.affectedRows > 0) {
+                        notif.msg = 'Данные успешно изменены!'
+                        notif.status = 'success'
+                        return res.json(notif)
+                    }
+
+                    notif.msg = 'Не удалось добавить изменения!'
+                    notif.status = 'danger'
+
+                    return res.json(notif)
+
+                } catch (e) {
+                    notif.msg = 'Ошибка в операции!'
+                    notif.status = 'danger'
+
+                    return res.json(notif)
+                    console.log(e.message)
+                }
+            }
+        })
     })
+
+
+
 
 })
 
