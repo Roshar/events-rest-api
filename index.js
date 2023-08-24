@@ -840,6 +840,7 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
             })
         } else {
             let body = JSON.parse(req.body.event);
+            let desc = JSON.parse(req.body.description);
 
             let organization_id = JSON.parse(req.body.organizationId);
             let center_id = JSON.parse(req.body.centerId) ? JSON.parse(req.body.centerId) : ''
@@ -848,7 +849,7 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
 
 
             const title = body['title']
-            const description = body['description']
+            const description = desc['description']
             const category_id = body['category_id']
 
             const date_event = body['date_event']
