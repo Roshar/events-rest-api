@@ -133,3 +133,4 @@ dist
 
 #own pictures
 public/img/event_images
+public/.htaccess
