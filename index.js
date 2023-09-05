@@ -112,10 +112,12 @@ app.get('/event/:id', async (req, res) => {
     try {
         const [event, fields1] = await connect.query(`SELECT e.id, e.title, e.description, e.category_id, 
             e.organization_id, e.participants_number, DATE_FORMAT(e.date_event,"%d-%m-%Y %H:%i") as date_event,
-            e.picture_name, e.event_status, e.location, e.target_audience 
+            e.picture_name,additional_link, e.event_status, e.location, e.target_audience 
             FROM events as e 
             WHERE e.id_uniq = ?`,
             [req.params.id])
+
+        console.log(event)
 
         const [speakers, fields2] = await connect.query('SELECT sp.id, sp.firstname, sp.surname, sp.patronymic, sp.position, ' +
             'sp.company, sp.avatar FROM speakers as sp INNER JOIN relationship_events_speakers as rel ON sp.id = rel.speakers_id ' +
@@ -700,7 +702,7 @@ app.get('/admin/event/edit/:id', ensureToken, async (req, res) => {
         } else {
             try {
 
-                const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.description, e.category_id, e.organization_id, e.center_id, DATE_FORMAT(e.date_event, "%Y-%m-%d")as date_event,  DATE_FORMAT(e.date_event, "%h:%i") as  time_event, e.location, e.picture_name, e.target_audience,e.participants_number,e.limit_enrollers, e.event_status,' +
+                const [events, fields] = await connect.query('SELECT e.id,e.id_uniq, e.title, e.description, e.category_id, e.organization_id, e.center_id, DATE_FORMAT(e.date_event, "%Y-%m-%d")as date_event,  DATE_FORMAT(e.date_event, "%h:%i") as  time_event, e.location, e.picture_name, e.additional_link, e.target_audience,e.participants_number,e.limit_enrollers, e.event_status,' +
                     'DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e ' +
                     'INNER JOIN category_events as c ON e.category_id = c.id ' +
                     'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.id_uniq = ? ', [req.params.id])
@@ -741,6 +743,7 @@ app.post('/admin/event/edit/:id', ensureToken, upload.single('file'), async (req
             const date_event = req.body['date_event'];
             const date_time = req.body['date_time'];
             const published = req.body['published'];
+            const additional_link = req.body['additional_link'];
             const speakers = JSON.parse(req.body['speakersCurrent']);
 
             let file = 'event_bg.jpg'
@@ -758,8 +761,8 @@ app.post('/admin/event/edit/:id', ensureToken, upload.single('file'), async (req
                 if (checkRow.length > 0) {
                     const [udateData, fields2] =
                         await connect.query('UPDATE events SET `title` = ? , `description` = ?, `category_id` = ?,`organization_id` =?, `center_id` =?,' +
-                            '`date_event` = ?, `location` = ?,`target_audience` = ?, `participants_number` = ?, `picture_name` = ?, `event_status` = ?, `published` = ?  WHERE id_uniq = ?',
-                            [title, description, category_id, organization_id, center_id, eventDt, location, target_audience, participants_number, file, event_status, published, id]);
+                            '`date_event` = ?, `location` = ?,`target_audience` = ?, `participants_number` = ?, `picture_name` = ?, `additional_link` = ?, `event_status` = ?, `published` = ?  WHERE id_uniq = ?',
+                            [title, description, category_id, organization_id, center_id, eventDt, location, target_audience, participants_number, file, additional_link, event_status, published, id]);
 
 
                     if (udateData.affectedRows > 0) {
@@ -831,15 +834,13 @@ app.get('/admin/event/add', ensureToken, async (req, res) => {
 
 app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res) => {
 
-
-
     jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
         if (err) {
             res.json({
                 code: 403
             })
         } else {
-            console.log(req.body)
+
             let body = JSON.parse(req.body.event);
             let description = JSON.parse(req.body.description);
 
@@ -861,6 +862,7 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
             const event_status = body['event_status'] ? body['event_status'] : 1
             const published = body['published'] ? body['published'] : 1;
             const limitEnrollers = (body['limit'] === 'true') ? "true" : "";
+            const additional_link = body['additional_link'];
 
 
             const eventDt = date_event + ' ' + time_event;
@@ -877,8 +879,8 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
             const notif = {}
             try {
                 const [row, filelds] = await connect.query('INSERT INTO events ' +
-                    '(`id_uniq`,`title`,`description`,`category_id`,`organization_id`,`center_id`,`date_event`,`location`,`target_audience`,`participants_number`, `limit_enrollers`, `picture_name`,`event_status`,`author`,`published`) ' +
-                    'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+                    '(`id_uniq`,`title`,`description`,`category_id`,`organization_id`,`center_id`,`date_event`,`location`,`target_audience`,`participants_number`, `limit_enrollers`, `picture_name`,`additional_link`,`event_status`,`author`,`published`) ' +
+                    'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
                     event_uniq,
                     title,
                     description,
@@ -891,6 +893,7 @@ app.post('/admin/event/add', ensureToken, upload.single('file'), async (req, res
                     participants_number,
                     limitEnrollers,
                     file,
+                    additional_link,
                     event_status,
                     'admin',
                     published
