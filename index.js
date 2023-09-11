@@ -101,7 +101,10 @@ app.get('/events', async (req, res) => {
             'INNER JOIN category_events as c ON e.category_id = c.id ' +
             'INNER JOIN register_status ON register_status.id = e.event_status WHERE e.event_status = 2 LIMIT 4')
 
-        return res.status(200).json({ soon, last });
+        const [orgList, fields3] = await connect.query(`SELECT * FROM organizations`)
+
+
+        return res.status(200).json({ soon, last, orgList });
     } catch (e) {
         console.log(e.message)
     }
@@ -138,23 +141,32 @@ app.get('/events/cat/:filters', async (req, res) => {
 
     const params = JSON.parse(req.params.filters)
 
-
     const year = params.year ? ` AND YEAR(e.date_event) = ${params.year} ` : ""
     const month = params.month ? ` AND MONTH(e.date_event) = ${params.month} ` : ""
-    const category = params.category ? ` = ${params.category} ` : ""
+    const category = params.category ? `AND e.category_id = ${params.category} ` : ""
+    const org = params.org ? ` AND e.organization_id = ${params.org} ` : ""
     const offset = (params.offset != 0) ? ` OFFSET ${params.offset} ` : `OFFSET 0`
     const limit = ` LIMIT ${params.limit} `
 
     try {
-        const [soon, fileds] = await connect.query(`
+        const sql = `
         SELECT e.id,e.id_uniq, e.title, e.category_id, 
         DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, 
-        e.picture_name, e.event_status,
+        e.picture_name, e.event_status, o.name as org_name,
         c.cat_name, register_status.title as status FROM events as e  
         INNER JOIN category_events as c ON e.category_id = c.id
         INNER JOIN register_status ON register_status.id = e.event_status 
-        WHERE e.event_status = 1 AND e.category_id ${category}  ${year} ${month} ORDER BY
-         e.date_event  ${limit}  ${offset} `)
+        INNER JOIN organizations as o ON e.organization_id = o.id 
+        WHERE e.event_status = 1 ${org} ${category} ${year} ${month} ORDER BY
+         e.date_event  ${limit}  ${offset} `
+
+        const [soon, fileds] = await connect.query(sql)
+
+        if (org !== "") {
+            const sql = `SELECT id, name FROM organizations WHERE id = ${params.org}`
+            const [orgReult, fileds] = await connect.query(sql)
+            return res.json({ soon, orgReult })
+        }
 
         return res.json({ soon })
 
@@ -167,10 +179,10 @@ app.get('/events/cat/last/:filters', async (req, res) => {
 
     const params = JSON.parse(req.params.filters)
 
-
     const year = params.year ? ` AND YEAR(e.date_event) = ${params.year} ` : ""
     const month = params.month ? ` AND MONTH(e.date_event) = ${params.month} ` : ""
-    const category = params.category ? ` = ${params.category} ` : ""
+    const category = params.category ? `AND e.category_id = ${params.category} ` : ""
+    const org = params.org ? ` AND e.organization_id = ${params.org} ` : ""
     const offset = (params.offset != 0) ? ` OFFSET ${params.offset} ` : `OFFSET 0`
     const limit = ` LIMIT ${params.limit} `
 
@@ -184,11 +196,16 @@ app.get('/events/cat/last/:filters', async (req, res) => {
         c.cat_name, register_status.title as status FROM events as e 
         INNER JOIN category_events as c ON e.category_id = c.id
         INNER JOIN register_status ON register_status.id = e.event_status 
-        WHERE e.event_status = 2 AND e.category_id ${category}  ${year} ${month} ORDER BY 
+        WHERE e.event_status = 2 ${org} ${category}  ${year} ${month} ORDER BY 
         e.date_event  ${limit}  ${offset}`
 
-
         const [last, fileds] = await connect.query(sql)
+
+        if (org !== "") {
+            const sql = `SELECT id, name FROM organizations WHERE id = ${params.org}`
+            const [orgReult, fileds] = await connect.query(sql)
+            return res.json({ last, orgReult })
+        }
 
         return res.json({ last })
 
@@ -622,8 +639,7 @@ app.post('/admin/speaker/create', ensureToken, upload2.single('file'), async (re
 
     let body = JSON.parse(req.body.speaker);
 
-    console.log(body)
-    console.log(req.file)
+
     const firstname = body.firstname;
     const surname = body.surname;
     const patronymic = body.patronymic;
@@ -1531,4 +1547,3 @@ app.post('/admin/report/enrollers_list', ensureToken, upload.single('file'), asy
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
 })
-
