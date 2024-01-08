@@ -539,8 +539,6 @@ app.post("/admin/speaker/edit/:id", ensureToken, async (req, res) => {
       return;
     }
 
-    console.log(req.body);
-
     const id = req.body.id;
     const firstname = req.body.firstname;
     const surname = req.body.surname;
@@ -549,7 +547,18 @@ app.post("/admin/speaker/edit/:id", ensureToken, async (req, res) => {
     const company = req.body.company;
     const gender_id = req.body["gender_id"];
 
-    let file = req.body.avatar;
+    let file = req.body.file;
+
+    if (parseInt(req.body["gender_id"]) === 2 && req.body.file === "man.jpg") {
+      file = "woman.jpg";
+    } else if (
+      parseInt(req.body["gender_id"]) == 1 &&
+      req.body.file === "woman.jpg"
+    ) {
+      file = "man.jpg";
+    }
+
+    console.log(file);
 
     if (req.file) {
       file = req.file.filename;
@@ -594,9 +603,8 @@ app.post("/admin/speaker/edit/:id", ensureToken, async (req, res) => {
         } catch (e) {
           notif.msg = "Ошибка в операции!";
           notif.status = "danger";
-
-          return res.json(notif);
           console.log(e.message);
+          return res.json(notif);
         }
       }
     });
@@ -865,8 +873,7 @@ app.post(
         const additional_link = req.body["additional_link"];
         const speakers = JSON.parse(req.body["speakersCurrent"]);
 
-        let file = "event_bg.jpg";
-
+        let file = null;
         if (req.file) {
           file = req.file.filename;
         }
@@ -883,29 +890,15 @@ app.post(
           ]);
 
           if (checkRow.length > 0) {
-            const [
-              udateData,
-              fields2,
-            ] = await connect.query(
-              "UPDATE events SET `title` = ? , `description` = ?, `category_id` = ?,`organization_id` =?, `center_id` =?," +
-                "`date_event` = ?, `location` = ?,`target_audience` = ?, `participants_number` = ?, `picture_name` = ?, `additional_link` = ?, `event_status` = ?, `published` = ?  WHERE id_uniq = ?",
-              [
-                title,
-                description,
-                category_id,
-                organization_id,
-                center_id,
-                eventDt,
-                location,
-                target_audience,
-                participants_number,
-                file,
-                additional_link,
-                event_status,
-                published,
-                id,
-              ]
-            );
+            let fileSql;
+            if (file !== null) {
+              fileSql = `picture_name = '${file}',`;
+            } else {
+              fileSql = "";
+            }
+            let sql1 = `UPDATE events SET title = '${title}', description = '${description}', category_id = '${category_id}', organization_id = '${organization_id}', center_id ='${center_id}', 
+            date_event = '${date_event}', location = '${location}', target_audience = '${target_audience}', participants_number = '${participants_number}', ${fileSql} additional_link = '${additional_link}', event_status = '${event_status}', published = '${published}'  WHERE id_uniq = '${id}'`;
+            let [udateData, fields2] = await connect.query(sql1);
 
             if (udateData.affectedRows > 0) {
               const [
@@ -996,14 +989,16 @@ app.post(
         });
       } else {
         let body = JSON.parse(req.body.event);
-        let description = JSON.parse(req.body.description);
 
         let organization_id = JSON.parse(req.body.organizationId);
         let center_id = JSON.parse(req.body.centerId)
           ? JSON.parse(req.body.centerId)
           : "";
 
+        console.log(body);
+
         const title = body["title"];
+        const description = body["description"];
 
         const category_id = body["category_id"];
 
@@ -1388,11 +1383,24 @@ app.post("/login", upload.single("file"), async (req, res) => {
       [login, password]
     );
     if (checkUser.length > 0) {
-      token = jwt.sign(checkUser[0]["id"], process.env.SECRET_KEY);
-      notif.msg = process.env.WELCOME_MSG_RU;
-      notif.status = "success";
-      notif.token = token;
-      return res.json(notif);
+      let tt = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 24;
+
+      try {
+        // token = jwt.sign(checkUser[0]["id"], process.env.SECRET_KEY);
+        token = jwt.sign(
+          {
+            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 24,
+            data: checkUser[0]["id"],
+          },
+          process.env.SECRET_KEY
+        );
+        notif.msg = process.env.WELCOME_MSG_RU;
+        notif.status = "success";
+        notif.token = token;
+        return res.json(notif);
+      } catch (e) {
+        console.log(e);
+      }
     }
     notif.msg = process.env.LOGIN_MSG_WRONG;
     notif.status = "danger";
