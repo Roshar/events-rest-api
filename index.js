@@ -995,8 +995,6 @@ app.post(
           ? JSON.parse(req.body.centerId)
           : "";
 
-        console.log(body);
-
         const title = body["title"];
         const description = body["description"];
 
@@ -1249,7 +1247,8 @@ app.get("/admin/event/delete/:id", ensureToken, async (req, res) => {
 
 // USERS enrollers
 
-app.get("/admin/enrollers", ensureToken, async (req, res) => {
+app.get("/admin/enrollers/:params", ensureToken, async (req, res) => {
+  const params = JSON.parse(req.params.params);
   jwt.verify(req.token, process.env.SECRET_KEY, async function (err, data) {
     if (err) {
       res.json({
@@ -1257,16 +1256,36 @@ app.get("/admin/enrollers", ensureToken, async (req, res) => {
       });
     } else {
       try {
+        const offset =
+          params.firstIndex > 0 ? `OFFSET ${params.firstIndex}` : "";
+        const limit = `LIMIT 5`;
+
+        // const [speakerList, fields] = await connect.query(
+        //   `SELECT * FROM speakers ORDER BY surname  ${limit} ${offset}`
+        // );
+
         const [usersList, fields] = await connect.query(
-          "SELECT  e.id, e.surname , e.firstname, e.email," +
-            "e.phone, e.position, e.company, e.experience, e.uniq_serial_for_link, a.id_area, a.title_area, event.title, event.id_uniq FROM " +
-            "enrollers as e INNER JOIN area as a ON e.area_id = a.id_area " +
-            "INNER JOIN events as event ON e.event_id = event.id_uniq"
+          `SELECT  e.id, e.surname , e.firstname, e.email,
+            e.phone, e.position, e.company, e.experience, e.uniq_serial_for_link, a.id_area, a.title_area, event.title, event.id_uniq FROM 
+            enrollers as e INNER JOIN area as a ON e.area_id = a.id_area 
+            INNER JOIN events as event ON e.event_id = event.id_uniq ${limit} ${offset}`
         );
         res.json(usersList);
       } catch (e) {
         console.log(e.message);
       }
+
+      // try {
+      //   const [usersList, fields] = await connect.query(
+      //     "SELECT  e.id, e.surname , e.firstname, e.email," +
+      //       "e.phone, e.position, e.company, e.experience, e.uniq_serial_for_link, a.id_area, a.title_area, event.title, event.id_uniq FROM " +
+      //       "enrollers as e INNER JOIN area as a ON e.area_id = a.id_area " +
+      //       "INNER JOIN events as event ON e.event_id = event.id_uniq"
+      //   );
+      //   res.json(usersList);
+      // } catch (e) {
+      //   console.log(e.message);
+      // }
     }
   });
 });
