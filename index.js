@@ -107,6 +107,22 @@ app.get("/events", async (req, res) => {
   }
 });
 
+app.get("/events/getsearchresult/:params", async (req, res) => {
+  let params = req.params.params;
+
+  try {
+    const [result, fields] = await connect.query(
+      `SELECT id_uniq, title FROM events WHERE title LIKE '${params}%' LIMIT 10`
+    );
+
+    console.log(result);
+
+    return res.status(200).json(result);
+  } catch (e) {
+    console.log(e.message);
+  }
+});
+
 app.get("/event/:id", async (req, res) => {
   try {
     const [event, fields1] = await connect.query(
