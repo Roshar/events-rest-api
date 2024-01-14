@@ -810,17 +810,15 @@ app.post(
 );
 
 app.post("/admin/speakers/search", async (req, res) => {
-  // const t = JSON.parse(req.body.body);
-  const params = JSON.parse(req.body.params);
-  console.log();
-  // let params = req.params.params;
+  const params = JSON.parse(req.body.params).trim();
 
   try {
-    const sql = `SELECT * FROM speakers WHERE firstname LIKE '${params}%' OR surname LIKE '${params}' LIMIT 5`;
+    const sql = `SELECT * FROM speakers WHERE surname LIKE '%${params}%' ORDER BY surname LIMIT 5`;
+    console.log(sql);
 
     const [result, fields] = await connect.query(sql);
 
-    console.log(result);
+    // console.log(result);
 
     return res.status(200).json(result);
   } catch (e) {
