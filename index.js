@@ -809,6 +809,25 @@ app.post(
   }
 );
 
+app.post("/admin/speakers/search", async (req, res) => {
+  // const t = JSON.parse(req.body.body);
+  const params = JSON.parse(req.body.params);
+  console.log();
+  // let params = req.params.params;
+
+  try {
+    const sql = `SELECT * FROM speakers WHERE firstname LIKE '${params}%' OR surname LIKE '${params}' LIMIT 5`;
+
+    const [result, fields] = await connect.query(sql);
+
+    console.log(result);
+
+    return res.status(200).json(result);
+  } catch (e) {
+    console.log(e.message);
+  }
+});
+
 // EVENTS ADMIN
 
 app.get("/admin/event/edit/:id", ensureToken, async (req, res) => {
@@ -836,7 +855,7 @@ app.get("/admin/event/edit/:id", ensureToken, async (req, res) => {
           "SELECT * FROM organizations"
         );
         const [speakersList, fields4] = await connect.query(
-          "SELECT * FROM speakers"
+          "SELECT * FROM speakers ORDER BY surname"
         );
         const [centers, fields6] = await connect.query("SELECT * FROM centers");
         const [
@@ -887,7 +906,25 @@ app.post(
         const date_time = req.body["date_time"];
         const published = req.body["published"];
         const additional_link = req.body["additional_link"];
-        const speakers = JSON.parse(req.body["speakersCurrent"]);
+
+        // const speakers = JSON.parse(req.body["speakersCurrent"]);
+
+        const tmp = JSON.parse(req.body["speakersCurrent"]);
+
+        let tmpArray = [];
+
+        function itemCheck(item) {
+          if (tmpArray.indexOf(item.id) === -1) {
+            tmpArray.push(item.id);
+            return true;
+          }
+          return false;
+        }
+
+        const speakers = tmp.filter((item) => itemCheck(item));
+
+        console.log("---------");
+        console.log(speakers);
 
         let file = null;
         if (req.file) {
@@ -976,8 +1013,9 @@ app.get("/admin/event/add", ensureToken, async (req, res) => {
     } else {
       try {
         const [speakers, fields] = await connect.query(
-          "SELECT * FROM speakers"
+          "SELECT * FROM speakers ORDER BY surname ASC LIMIT 5 "
         );
+
         const [cat, fields2] = await connect.query(
           "SELECT * FROM category_events"
         );
@@ -1029,7 +1067,19 @@ app.post(
         const eventDt = date_event + " " + time_event;
         const event_uniq = uuidv4();
 
-        const speakers = body["speakers"];
+        const tmp = body["speakers"];
+
+        let tmpArray = [];
+
+        function itemCheck(item) {
+          if (tmpArray.indexOf(item.id) === -1) {
+            tmpArray.push(item.id);
+            return true;
+          }
+          return false;
+        }
+
+        const speakers = tmp.filter((item) => itemCheck(item));
 
         let file = "event_bg.jpg";
 
