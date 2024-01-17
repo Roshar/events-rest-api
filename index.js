@@ -1309,6 +1309,23 @@ app.get("/admin/event/delete/:id", ensureToken, async (req, res) => {
   });
 });
 
+app.post("/admin/event/search", async (req, res) => {
+  const params = JSON.parse(req.body.params).trim();
+
+  try {
+    const sql = `SELECT * FROM events WHERE title LIKE '%${params}%' ORDER BY date_event LIMIT 5`;
+    console.log(sql);
+
+    const [result, fields] = await connect.query(sql);
+
+    // console.log(result);
+
+    return res.status(200).json(result);
+  } catch (e) {
+    console.log(e.message);
+  }
+});
+
 // USERS enrollers
 
 app.get("/admin/enrollers/:params", ensureToken, async (req, res) => {
