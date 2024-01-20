@@ -1311,14 +1311,24 @@ app.get("/admin/event/delete/:id", ensureToken, async (req, res) => {
 
 app.post("/admin/event/search", async (req, res) => {
   const params = JSON.parse(req.body.params).trim();
-
+  // const sql = `SELECT e.id, e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,
+  // DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e
+  // INNER JOIN category_events as c ON e.category_id = c.id
+  // INNER JOIN register_status ON register_status.id = e.event_status WHERE e.title LIKE '%${params}%''
+  // ORDER BY e.date_event DESC LIMIT 5`;
   try {
-    const sql = `SELECT * FROM events WHERE title LIKE '%${params}%' ORDER BY date_event LIMIT 5`;
-    console.log(sql);
+    // const sql = `SELECT * FROM events WHERE title LIKE '%${params}%' ORDER BY date_event LIMIT 5`;
+    // console.log(sql);
+
+    const sql = `SELECT e.id, e.id_uniq, e.title, e.category_id, DATE_FORMAT(e.date_event, "%d-%m-%Y") as date_event, e.picture_name, e.event_status,
+  DATE_FORMAT(e.created_at, "%d-%m-%Y") as dc, e.author, e.published, c.cat_name, register_status.title as status FROM events as e
+  INNER JOIN category_events as c ON e.category_id = c.id
+  INNER JOIN register_status ON register_status.id = e.event_status WHERE e.title LIKE '%${params}%'
+  ORDER BY e.date_event DESC LIMIT 5`;
 
     const [result, fields] = await connect.query(sql);
 
-    // console.log(result);
+    console.log(result);
 
     return res.status(200).json(result);
   } catch (e) {
@@ -1483,13 +1493,13 @@ app.post("/login", upload.single("file"), async (req, res) => {
       [login, password]
     );
     if (checkUser.length > 0) {
-      let tt = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 24;
+      let tt = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 24 * 10000;
 
       try {
         // token = jwt.sign(checkUser[0]["id"], process.env.SECRET_KEY);
         token = jwt.sign(
           {
-            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 24,
+            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 24 * 10000,
             data: checkUser[0]["id"],
           },
           process.env.SECRET_KEY
